@@ -4,7 +4,8 @@ class PathUtils
         dir.split(File::SEPARATOR)
     end
 
-    def self.computeRelative(file, fromBase, toBase, fromExtn, toExtn) 
+    def self.computeRelative(file, fromBase, toBase, \
+                             fromExtn = "", toExtn = "") 
         dirs = splitPath(File.dirname(file))
         fromDirs = splitPath(fromBase)
         while (!fromDirs.empty? && fromDirs.first == dirs.first)
