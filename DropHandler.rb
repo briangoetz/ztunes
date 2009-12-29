@@ -1,5 +1,6 @@
 require "rubygems"
 require "mp3info"
+require "wmainfo"
 
 class DropHandler
     attr_accessor :typeMap
@@ -8,17 +9,14 @@ class DropHandler
     @isTransform = false
 
     def outputType(file)
-        @typeMap[file.pathmap("%x")]
+        ext = file.pathmap("%x").sub!(/^\./, "")
+        @typeMap[ext]
     end
 
     def handles?(file)
         outputType(file) != nil
     end
 
-    def getOutputFile(file, inputBase, outputBase)
-        ext = file.pathmap("%x")
-        f = PathUtils.computeRelative(file, inputBase, outputBase, ext, @typeMap[ext])
-    end
 end
 
 class WavDropHandler < DropHandler
@@ -29,12 +27,12 @@ class WavDropHandler < DropHandler
 
     def handles?(file)
         pieces = file.pathmap("%n").split("#")
-        super.handles?(file) && pieces.size == 5
+        super(file) && pieces.size == 5
     end
 
-    def getOutputFile(file, inputBase, outputBase)
+    def getOutputFile(file, inputBase)
         genre, artist, album, trackNo, title = file.pathmap("%n").split("#")
-        File.join(outputBase, artist, album, "#{title}.flac")
+        File.join(artist, album, "#{title}.flac")
     end
 
     def getCommand(file, outputFile) 
@@ -43,7 +41,8 @@ class WavDropHandler < DropHandler
                 + "-T \"artist=#{artist}\" -T \"title=#{title}\" " \
                 + "-T \"album=#{album}\" -T \"tracknumber=#{trackNo}\" " \
                 + "-T \"genre=#{genre}\" " \
-                + " #{file} --output-name=#{outputFile}"
+                + " #{PathUtils.escape(file)} " \
+                + "--output-name=#{PathUtils.escape(outputFile)}"
     end
 end
 
@@ -62,7 +61,21 @@ class WmaDropHandler < DropHandler
         @typeMap = { "wma" => "wma" }
     end
 
-    # getOutputFile using wma tags
+    def handles?(file)
+        wma = WmaInfo.new(file)
+        super(file) && !wma.hasdrm?
+    end
+
+    def getOutputFile(file, inputBase)
+        wma = WmaInfo.new(file)
+        artist = wma.tags["AlbumArtist"]
+        artist = "Unknown Artist" if artist == nil
+        album = wma.tags["AlbumTitle"]
+        album = "Unknown Album" if album == nil
+        title = wma.tags["Title"]
+        title = "Unknown Title" if title == nil
+        File.join(artist, album, "#{title}.flac")
+    end
 end
 
 
@@ -71,9 +84,9 @@ class Mp3DropHandler < DropHandler
         @typeMap = { "mp3" => "mp3" }
     end
 
-    def getOutputFile(file, inputBase, outputBase)
+    def getOutputFile(file, inputBase)
         mp3 = Mp3Info.new(file)
-        File.join(outputBase, mp3.tag.artist, mp3.tag.album, "#{mp3.tag.title}.mp3")
+        File.join(mp3.tag.artist, mp3.tag.album, "#{mp3.tag.title}.mp3")
     end
 end
 

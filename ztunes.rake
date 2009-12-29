@@ -12,15 +12,17 @@ SRC = [ "#{BASE}/music" ]
 AUDIO = "#{BASE}/music" 
 VIDEO = "#{BASE}/video" 
 MP3 = "#{BASE}/mp3"
-THRESHOLD = 120
+THRESHOLD = 10
 
 @sourceDirs = { "wav" => AUDIO, 
                 "mp3" => AUDIO,
+                "wma" => AUDIO,
                 "TiVo" => VIDEO
               }
 
 @handlers = { "wav" => WavDropHandler.new, 
-              "mp3" => Mp3DropHandler.new }
+              "mp3" => Mp3DropHandler.new,
+              "wma" => WmaDropHandler.new }
 
 ## 
 ## End Configuration
@@ -34,10 +36,12 @@ def installDropHandler(type, handler)
     task :drop => [ taskName ]
     task taskName do
         FileList["#{DROP}/*.#{type}"].each do |f|
-            if (Time.now - File.stat(f).mtime > THRESHOLD)
+            if ((Time.now - File.stat(f).mtime > THRESHOLD) &&
+                handler.handles?(f))
                 stageFile = PathUtils.computeRelative(f, DROP, STAGE)
                 outputBase = @sourceDirs[type]
-                outputFile = handler.getOutputFile(f, DROP, outputBase)
+                outputFile = File.join(outputBase, 
+                                       handler.getOutputFile(f, DROP))
                 outputDir = outputFile.pathmap("%d")
                 doFileCmd(:mv, f, stageFile)
                 doFileCmd(:mkdir_p, outputDir) if !File.exist?(outputDir)
@@ -85,9 +89,12 @@ end
 
 def doFileCmd(cmd, *args)
     begin
-        args = args.each { |s| s = escape(s) };
-        self.send cmd, *args if !@dryRun
-        # puts "#{cmd} #{args.join(' ')}"
+        args = args.each { |s| s = PathUtils.escape(s) };
+        if (@dryRun) 
+            puts "#{cmd} #{args.join(' ')}"
+        else
+            self.send cmd, *args if !@dryRun
+        end
     rescue
         puts "Exception: " + $!
         puts "  executing #{cmd} #{args.join(' ')}"
@@ -101,10 +108,6 @@ def doCmd(cmd)
     rescue
         puts "...execution error: " + $!
     end 
-end
-
-def escape(s) 
-    s.gsub(/([()`'"&;, ])/, '\\\\\\1') 
 end
 
 task :default do
