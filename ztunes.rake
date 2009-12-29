@@ -39,7 +39,7 @@ def installDropHandler(type, handler)
                 outputBase = @sourceDirs[type]
                 outputFile = handler.getOutputFile(f, DROP, outputBase)
                 outputDir = outputFile.pathmap("%d")
-                doFileCmd(:mv, [ f, stageFile ])
+                doFileCmd(:mv, f, stageFile)
                 doFileCmd(:mkdir_p, outputDir) if !File.exist?(outputDir)
                 if handler.isTransform
                     # TODO thread these
@@ -47,7 +47,7 @@ def installDropHandler(type, handler)
                     doCmd(handler.getCommand(stageFile, outputFile))
                     doFileCmd(:rm, stageFile)
                 else
-                    doFileCmd(:mv, [ stageFile, outputFile ])
+                    doFileCmd(:mv, stageFile, outputFile)
                 end
             end
         end
@@ -83,25 +83,29 @@ def pruneEmptyDirs(dir, depth = 0)
     end
 end 
 
-def doFileCmd(cmd, args)
+def doFileCmd(cmd, *args)
     begin
-        self.send cmd, args if !@dryRun
-        puts "#{cmd} #{args.join(' ')}"
+        args = args.each { |s| s = escape(s) };
+        self.send cmd, *args if !@dryRun
+        # puts "#{cmd} #{args.join(' ')}"
     rescue
         puts "Exception: " + $!
-        puts "  executing #{cmd} #{args}"
+        puts "  executing #{cmd} #{args.join(' ')}"
     end 
 end
 
 def doCmd(cmd)
     begin
         puts "#{cmd}"
-        kernel cmd if !@dryRun
+        Kernel.system cmd if !@dryRun
     rescue
         puts "...execution error: " + $!
     end 
 end
 
+def escape(s) 
+    s.gsub(/([()`'"&;, ])/, '\\\\\\1') 
+end
 
 task :default do
 end
