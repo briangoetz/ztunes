@@ -1,19 +1,28 @@
-class PathUtils
+module PathUtils
 
-    def self.splitPath(dir)
-        dir.split(File::SEPARATOR)
+    def self.splitPath(file)
+        file.split(File::SEPARATOR)
     end
 
-    def self.computeRelative(file, fromBase, toBase, \
-                             fromExtn = "", toExtn = "") 
-        dirs = splitPath(File.dirname(file))
-        fromDirs = splitPath(fromBase)
-        while (!fromDirs.empty? && fromDirs.first == dirs.first)
-            dirs.shift 
-            fromDirs.shift 
+    def self.relativePath(file, base) 
+        filePaths = splitPath(File.expand_path(file))
+        basePaths = splitPath(File.expand_path(base))
+        if (filePaths.first(basePaths.length) == basePaths)
+            File.join(filePaths.last(filePaths.length-basePaths.length))
+        else
+            ""
         end
-        toDirs = splitPath(toBase)
-        return File.join(toDirs.concat(dirs).concat([ File.basename(file, fromExtn) + toExtn ]))
+    end
+
+    def self.replaceExtension(file, fromExtn, toExtn) 
+        file.gsub(/\.#{fromExtn}$/, ".#{toExtn}");
+    end
+
+    def self.computeRelative(file, fromBase, toBase, 
+                                  fromExtn = "", toExtn = "") 
+        f = File.join(toBase, relativePath(file, fromBase))
+        f = replaceExtension(f, fromExtn, toExtn) if (fromExtn != "")
+        f
     end
 
     def self.searchList(dirs, file) 
@@ -35,3 +44,6 @@ class PathUtils
 end
 
 
+#puts PathUtils.relativePath("/a/b/c/d.e", "/a/")
+#puts PathUtils.computeRelative("/a/b/c/d.e", "/a/b", "/x/y", "e", "f")
+#puts PathUtils.computeRelative("/a/b/c/d.e", "/a/b", "/x/y")

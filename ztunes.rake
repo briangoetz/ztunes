@@ -1,5 +1,5 @@
-require "PathUtils.rb"
-require "DropHandler.rb"
+require "PathUtils"
+require "DropHandler"
 
 ##
 ## Configuration 
@@ -9,11 +9,18 @@ BASE = "."
 DROP = "#{BASE}/drop"
 STAGE = "#{BASE}/stage"
 SRC = [ "#{BASE}/music" ]
-OUT = "#{BASE}/music" 
+AUDIO = "#{BASE}/music" 
+VIDEO = "#{BASE}/video" 
 MP3 = "#{BASE}/mp3"
 THRESHOLD = 120
 
-@handlers = { "wav" => WavDropHandler.new }
+@sourceDirs = { "wav" => AUDIO, 
+                "mp3" => AUDIO,
+                "TiVo" => VIDEO
+              }
+
+@handlers = { "wav" => WavDropHandler.new, 
+              "mp3" => Mp3DropHandler.new }
 
 ## 
 ## End Configuration
@@ -29,12 +36,19 @@ def installDropHandler(type, handler)
         FileList["#{DROP}/*.#{type}"].each do |f|
             if (Time.now - File.stat(f).mtime > THRESHOLD)
                 stageFile = PathUtils.computeRelative(f, DROP, STAGE)
-                outputFile = handler.getOutputFile(stageFile, STAGE, OUT)
+                outputBase = @sourceDirs[type]
+                outputFile = handler.getOutputFile(f, DROP, outputBase)
                 outputDir = outputFile.pathmap("%d")
                 doFileCmd(:mv, [ f, stageFile ])
                 doFileCmd(:mkdir_p, outputDir) if !File.exist?(outputDir)
-                # TODO thread these
-                doCmd(handler.getCommand(stageFile, outputFile))
+                if handler.isTransform
+                    # TODO thread these
+                    # catch exceptions?
+                    doCmd(handler.getCommand(stageFile, outputFile))
+                    doFileCmd(:rm, stageFile)
+                else
+                    doFileCmd(:mv, [ stageFile, outputFile ])
+                end
             end
         end
     end
@@ -72,7 +86,7 @@ end
 def doFileCmd(cmd, args)
     begin
         self.send cmd, args if !@dryRun
-        puts "#{cmd} #{args}"
+        puts "#{cmd} #{args.join(' ')}"
     rescue
         puts "Exception: " + $!
         puts "  executing #{cmd} #{args}"
