@@ -1,8 +1,8 @@
 require "rubygems"
 require "wmainfo"
-require "TagHandler"
+require "MediaFile"
 
-class TagHandler_wma
+class MediaFile_wma
     def initialize(file)
         @info = WmaInfo.new(file, { :encoding => "LATIN1" } )
     end
@@ -17,7 +17,7 @@ class TagHandler_wma
 
     MethodToTags.each do |k,v|
         define_method(k) do
-            TagHandler.tag(@info.tags, v)
+            MediaFile.tag(@info.tags, v)
         end
     end
 

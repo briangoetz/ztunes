@@ -8,11 +8,11 @@ require "DropHandler"
 BASE = "."
 DROP = "#{BASE}/drop"
 STAGE = "#{BASE}/stage"
-SRC = [ "#{BASE}/music", "/home/media/music" ]
+SRC = [ "#{BASE}/music", "/home/media/music"  ]
 AUDIO = "#{BASE}/music" 
 VIDEO = "#{BASE}/video" 
 MP3 = "#{BASE}/mp3"
-THRESHOLD = 10
+THRESHOLD = 120
 
 @sourceDirs = { "wav" => AUDIO, 
                 "mp3" => AUDIO,
@@ -52,6 +52,7 @@ def installDropHandler(type, handler)
                 if handler.isTransform
                     # TODO thread these
                     # catch exceptions?
+                    # TODO write to temporary output file, then rename
                     doCmd(handler.getCommand(stageFile, outputFile))
                     doFileCmd(:rm, stageFile)
                 else
@@ -69,11 +70,30 @@ task :preview do
 end
 
 
-task :checktags do
-    SRC.each { |d|
-        FileList["#{d}/**/*"].each { |f|
+task :rename do
+    SRC.each do |d|
+        FileList["#{d}/**/*"].each do |f|
             next if File.directory?(f)
-            th = TagHandler.handlerFor(f)
+            th = MediaFile.handlerFor(f)
+            next if th == nil
+            relPath = PathUtils.relativePath(f, d)
+            extn = PathUtils.extension(f)
+            shouldBe = File.join(th.artist, th.album, "#{th.title}.#{extn}")
+            if (relPath != shouldBe)
+                puts "file: #{relPath}"
+                puts "tags: #{shouldBe}"
+                # doFileCmd :mv
+            end
+        end
+    end
+end
+
+
+task :checktags do
+    SRC.each do |d|
+        FileList["#{d}/**/*"].each do |f|
+            next if File.directory?(f)
+            th = MediaFile.handlerFor(f)
             next if th == nil
 
             puts "Missing ARTIST: #{f}" if !th.artist
@@ -81,8 +101,24 @@ task :checktags do
             puts "Missing TITLE: #{f}" if !th.title
             puts "Missing TRACK NUMBER: #{f}" if !th.tracknumber
             puts "Missing GENRE: #{f}" if !th.genre
-        }
-    }
+        end
+    end
+end
+
+
+task :mp3 do
+    SRC.each do |d|
+        FileList["#{d}/**/*"].each do |f| 
+            next if File.directory?(f)
+            extn = PathUtils.extension(f)
+            # next if not audio
+            if (extn == "mp3")
+                # ln -s
+            else
+                # transcode
+            end
+        end
+    end
 end
 
 

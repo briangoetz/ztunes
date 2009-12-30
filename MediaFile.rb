@@ -1,6 +1,6 @@
 require "PathUtils"
 
-class TagHandler
+class MediaFile
     @@handlers = { }
 
     def self.handlerFor(file)
@@ -8,8 +8,8 @@ class TagHandler
         k = @@handlers[extn]
         if !k
             begin
-                require "taghandlers/TagHandler_#{extn}"
-                k = eval("TagHandler_#{extn}")
+                require "taghandlers/MediaFile_#{extn}"
+                k = eval("MediaFile_#{extn}")
                 @@handlers[extn] = k
             rescue LoadError
                 puts "Error loading tag handler for #{extn}: #{$!}"

@@ -1,7 +1,7 @@
-require "TagHandler"
+require "MediaFile"
 
 ARGV.each do |f|
-    th = TagHandler.handlerFor(f)
+    th = MediaFile.handlerFor(f)
     puts "File: #{f}"
     if !th
         puts "No handler for #{f}"

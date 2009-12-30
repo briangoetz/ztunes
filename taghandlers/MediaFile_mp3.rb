@@ -1,7 +1,7 @@
 require "rubygems"
 require "mp3info"
 
-class TagHandler_mp3
+class MediaFile_mp3
     def initialize(file)
         @info = Mp3Info.new(file)
     end

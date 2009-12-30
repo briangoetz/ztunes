@@ -1,4 +1,4 @@
-require "TagHandler"
+require "MediaFile"
 require "PathUtils"
 
 class DropHandler
@@ -16,7 +16,7 @@ class DropHandler
     end
 
     def getOutputFile(file, inputBase) 
-        th = TagHandler.handlerFor(file)
+        th = MediaFile.handlerFor(file)
         return nil if !th
         extn = outputType(file)
         
@@ -68,7 +68,7 @@ class WmaDropHandler < DropHandler
     end
 
     def handles?(file)
-        super(file) && !TagHandler.handlerFor(file).drm?
+        super(file) && !MediaFile.handlerFor(file).drm?
     end
 end
 

@@ -1,7 +1,7 @@
 require "rubygems"
 require "mp4info"
 
-class TagHandler_m4a
+class MediaFile_m4a
     def initialize(file)
         @info = MP4Info.open(file)
     end

@@ -1,8 +1,8 @@
 require "rubygems"
 require "flacinfo"
-require "TagHandler"
+require "MediaFile"
 
-class TagHandler_flac
+class MediaFile_flac
     def initialize(file)
         @info = FlacInfo.new(file)
     end
@@ -17,10 +17,10 @@ class TagHandler_flac
 
     MethodToTags.each do |k,v|
         define_method(k) do
-            TagHandler.tag(@info.tags, v)
+            MediaFile.tag(@info.tags, v)
         end
     end
 end
 
-#x = TagHandler_flac.new "hold/Roundabout.flac"
+#x = MediaFile_flac.new "hold/Roundabout.flac"
 #puts x.artist, x.album, x.genre, x.title, x.tracknumber
