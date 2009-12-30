@@ -1,8 +1,9 @@
 require "rubygems"
 require "mp3info"
 
-class MediaFile_mp3
+class MediaFile_mp3 < MediaFile
     def initialize(file)
+        super("mp3")
         @info = Mp3Info.new(file)
     end
 

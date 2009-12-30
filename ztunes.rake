@@ -75,14 +75,13 @@ task :rename do
         FileList["#{d}/**/*"].each do |f|
             next if File.directory?(f)
             th = MediaFile.for(f)
-            next if th == nil
+            next if !th
             relPath = PathUtils.relativePath(f, d)
-            extn = PathUtils.extension(f)
-            shouldBe = File.join(th.artist, th.album, "#{th.title}.#{extn}")
+            shouldBe = th.fileName
             if (relPath != shouldBe)
                 puts "file: #{relPath}"
                 puts "tags: #{shouldBe}"
-                # doFileCmd :mv
+                doFileCmd(:mv, f, File.join(d, shouldBe))
             end
         end
     end
@@ -94,7 +93,7 @@ task :checktags do
         FileList["#{d}/**/*"].each do |f|
             next if File.directory?(f)
             th = MediaFile.for(f)
-            next if th == nil
+            next if !th
 
             puts "Missing ARTIST: #{f}" if !th.artist
             puts "Missing ALBUM: #{f}" if !th.album

@@ -3,6 +3,15 @@ require "PathUtils"
 class MediaFile
     @@handlers = { }
 
+    def initialize(extension = "", kind = :audio)
+        @extension = extension
+        @kind = kind
+    end
+
+    def self.types()
+        @@handlers.keys
+    end
+
     def self.for(file)
         extn = PathUtils.extension(file).downcase
         k = @@handlers[extn]
@@ -25,7 +34,7 @@ class MediaFile
         end
     end
 
-    def self.tag(tags, key)
+    def tagFromHash(tags, key)
         t = tags[key]
         return t if t 
         t = tags[key.upcase]
@@ -34,6 +43,45 @@ class MediaFile
         return t if t 
         t = tags[key.downcase.capitalize]
         return t
+    end
+
+    def fileName()
+        tags = { :artist => artist, :album => album, :title => title,
+                 :tracknumber => tracknumber }
+        MediaFile.makeFileName(tags, @kind, @extension)
+    end
+
+    def self.makeFileName(tags, kind, extension)
+        extn = extension ? ".#{extension}" : ""
+        if (kind == :audio) 
+            File.join(normalize(:artist, tags[:artist]),
+                      normalize(:album, tags[:album]),
+                      normalize(:title, tags[:title]) + extn)
+        else 
+            normalize(:title, tags[:title]) + extn
+        end
+    end
+
+    DefaultValues = {
+        :artist => "Unknown Artist",
+        :album => "Unknown Album",
+        :title => "Unknown Title"
+    }
+
+    def self.normalize(fieldName, value) 
+        # Windows can't deal with trailing spaces or dots
+        # Also can't deal with: \ / : * ? " < > |
+
+        t = value
+        t = DefaultValues[field] if !t
+        t = "Unknown" if !t
+        t.sub!(/[\. ]+$/, "")
+        t.gsub!(/\: ?/, ' - ')
+        t.tr!('*?', '  ')
+        t.tr!('<>', '()')
+        t.tr!('"', '\'')
+        t.tr!('/\\', ',')
+        t
     end
 end
 

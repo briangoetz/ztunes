@@ -1,8 +1,9 @@
 require "rubygems"
 require "mp4info"
 
-class MediaFile_m4a
+class MediaFile_m4a < MediaFile
     def initialize(file)
+        super("m4a")
         @info = MP4Info.open(file)
     end
 

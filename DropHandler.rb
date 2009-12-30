@@ -18,18 +18,12 @@ class DropHandler
     def getOutputFile(file, inputBase) 
         th = MediaFile.for(file)
         return nil if !th
-        extn = outputType(file)
-        
-        artist = th.artist 
-        album = th.album
-        title = th.title
+        wasExtn = PathUtils.extension(file)
+        newExtn = outputType(file)
 
-        artist = "Unknown Artist" if !artist
-        album = "Unknown Album" if !album
-        title = "Unknown Title" if !title
-
-        title += ".#{extn}" if extn
-        File.join(artist, album, title)
+        f = th.fileName()
+        f = PathUtils.replaceExtension(f, wasExtn, newExtn) if (wasExtn != newExtn)
+        f
     end
 end
 
@@ -47,7 +41,9 @@ class WavDropHandler < DropHandler
 
     def getOutputFile(file, inputBase)
         genre, artist, album, trackNo, title = file.pathmap("%n").split("#")
-        File.join(artist, album, "#{title}.flac")
+        tags = { :artist => artist, :album => album, :title => title, 
+                 :tracknumber => trackNo, :genre => genre }
+        MediaFile.makeFileName(tags, :audio, "flac")
     end
 
     def getCommand(file, outputFile) 
@@ -101,7 +97,7 @@ class TivoDropHandler < DropHandler
     end
 
     def getOutputFile(file, inputBase)
-        "#{file.pathmap("%n")}.mp4"
+        MediaFile.makeFileName({ :title => file.pathmap("%n") }, :video, "mp4")
     end
 
     # getCommand
