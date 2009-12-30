@@ -4,7 +4,7 @@ require "TagHandler"
 
 class TagHandler_wma
     def initialize(file)
-        @info = WmaInfo.new(file)
+        @info = WmaInfo.new(file, { :encoding => "LATIN1" } )
     end
 
     MethodToTags = { 

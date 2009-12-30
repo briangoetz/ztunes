@@ -236,7 +236,8 @@ class WmaInfo
     end
     keys.each do |key| # now pull the data based on length
       begin
-          @tags[key] = decode_binary_string(read_and_increment_offset(lengths[key]))
+          data = read_and_increment_offset(lengths[key])
+          @tags[key] = decode_binary_string(data)
       rescue
           @tags[key] = "Unavailable (iconv decode error)"
       end
