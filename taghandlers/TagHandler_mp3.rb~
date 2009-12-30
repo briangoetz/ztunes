@@ -1,4 +1,0 @@
-class TagHandler_mp3
-    def initialize(file)
-    end
-end
