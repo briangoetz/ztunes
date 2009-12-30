@@ -8,7 +8,7 @@ require "DropHandler"
 BASE = "."
 DROP = "#{BASE}/drop"
 STAGE = "#{BASE}/stage"
-SRC = [ "#{BASE}/music" ]
+SRC = [ "#{BASE}/music", "/home/media/music" ]
 AUDIO = "#{BASE}/music" 
 VIDEO = "#{BASE}/video" 
 MP3 = "#{BASE}/mp3"
@@ -66,6 +66,23 @@ end
 
 task :preview do
     @dryRun = true
+end
+
+
+task :checktags do
+    SRC.each { |d|
+        FileList["#{d}/**/*"].each { |f|
+            next if File.directory?(f)
+            th = TagHandler.handlerFor(f)
+            next if th == nil
+
+            puts "Missing ARTIST: #{f}" if !th.artist
+            puts "Missing ALBUM: #{f}" if !th.album
+            puts "Missing TITLE: #{f}" if !th.title
+            puts "Missing TRACK NUMBER: #{f}" if !th.tracknumber
+            puts "Missing GENRE: #{f}" if !th.genre
+        }
+    }
 end
 
 

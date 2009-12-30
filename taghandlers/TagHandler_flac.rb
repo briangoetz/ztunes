@@ -7,7 +7,7 @@ class TagHandler_flac
         @info = FlacInfo.new(file)
     end
 
-    @@methodToTags = { 
+    MethodToTags = { 
         :artist => "ARTIST", 
         :album => "ALBUM", 
         :title => "TITLE", 
@@ -15,10 +15,12 @@ class TagHandler_flac
         :tracknumber => "TRACKNUMBER"
     }
 
-    @@methodToTags.each { |k,v|
-        TagHandler_flac.send :define_method, k do
+    MethodToTags.each do |k,v|
+        define_method(k) do
             TagHandler.tag(@info.tags, v)
         end
-    }
+    end
 end
 
+#x = TagHandler_flac.new "hold/Roundabout.flac"
+#puts x.artist, x.album, x.genre, x.title, x.tracknumber

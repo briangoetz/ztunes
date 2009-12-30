@@ -7,7 +7,7 @@ class TagHandler_wma
         @info = WmaInfo.new(file)
     end
 
-    @@methodToTags = { 
+    MethodToTags = { 
         :artist => "AlbumArtist", 
         :album => "AlbumTitle", 
         :title => "Title", 
@@ -15,11 +15,11 @@ class TagHandler_wma
         :tracknumber => "TrackNumber"
     }
 
-    @@methodToTags.each { |k,v|
-        TagHandler_wma.send :define_method, k do
+    MethodToTags.each do |k,v|
+        define_method(k) do
             TagHandler.tag(@info.tags, v)
         end
-    }
+    end
 
     def drm?
         @info.hasdrm?

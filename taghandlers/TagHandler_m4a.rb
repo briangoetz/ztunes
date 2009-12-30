@@ -6,18 +6,18 @@ class TagHandler_m4a
         @info = MP4Info.open(file)
     end
 
-    @@methodToTags = { 
+    MethodToTags = { 
         :artist => :ART, 
         :album => :ALB, 
         :title => :NAM, 
         :genre => :GNRE
     }
 
-    @@methodToTags.each { |k,v|
-        TagHandler_m4a.send :define_method, k do
+    MethodToTags.each do |k,v|
+        define_method(k) do
             @info.send v
         end
-    }
+    end
 
     def tracknumber 
         @info.TRKN[0]
