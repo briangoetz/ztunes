@@ -81,7 +81,7 @@ task :rename do
             if (relPath != shouldBe)
                 puts "file: #{relPath}"
                 puts "tags: #{shouldBe}"
-                doFileCmd(:mv, f, File.join(d, shouldBe))
+                #doFileCmd(:mv, f, File.join(d, shouldBe))
             end
         end
     end

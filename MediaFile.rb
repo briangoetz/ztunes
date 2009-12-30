@@ -34,6 +34,11 @@ class MediaFile
         end
     end
 
+    def tags
+        tags = { :artist => artist, :album => album, :title => title,
+                 :tracknumber => tracknumber, :genre => genre }
+    end
+
     def tagFromHash(tags, key)
         t = tags[key]
         return t if t 
@@ -47,7 +52,7 @@ class MediaFile
 
     def fileName()
         tags = { :artist => artist, :album => album, :title => title,
-                 :tracknumber => tracknumber }
+                 :tracknumber => tracknumber, :genre => genre }
         MediaFile.makeFileName(tags, @kind, @extension)
     end
 
@@ -73,14 +78,21 @@ class MediaFile
         # Also can't deal with: \ / : * ? " < > |
 
         t = value
-        t = DefaultValues[field] if !t
+        t = DefaultValues[fieldName] if !t
         t = "Unknown" if !t
-        t.sub!(/[\. ]+$/, "")
+        if (fieldName == :artist && t =~ /;/)
+           t = t.split(";")[0]
+        end
+        if (t =~ /^([A-Z]\.)+$/)
+            t.gsub!(/\./, '')
+        end
+        t.sub!(/[\. ]+$/, '')
         t.gsub!(/\: ?/, ' - ')
+        t.gsub!(/[\/\\] ?/, ', ')
+        t.gsub!(/ ,/, ',')
         t.tr!('*?', '  ')
         t.tr!('<>', '()')
         t.tr!('"', '\'')
-        t.tr!('/\\', ',')
         t
     end
 end

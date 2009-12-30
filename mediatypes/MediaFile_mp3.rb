@@ -20,5 +20,9 @@ class MediaFile_mp3 < MediaFile
             @info.tag.send v
         end
     end
+
+    def tags
+        @info.tag2
+    end
 end
 

@@ -7,9 +7,10 @@ ARGV.each do |f|
         puts "No handler for #{f}"
         next
     end
-    puts "  Artist: #{th.artist}"
+    puts " Artist: #{th.artist}"
     puts "  Genre: #{th.genre}"
     puts "  Album: #{th.album}"
     puts "  Title: #{th.title}"
     puts "  Track: #{th.tracknumber}"
+    puts "  Other: #{th.tags}"
 end

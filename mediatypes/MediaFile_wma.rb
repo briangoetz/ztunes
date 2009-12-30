@@ -22,6 +22,10 @@ class MediaFile_wma < MediaFile
         end
     end
 
+    def tags
+        @info.tags
+    end
+
     def drm?
         @info.hasdrm?
     end
