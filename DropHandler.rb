@@ -16,7 +16,7 @@ class DropHandler
     end
 
     def getOutputFile(file, inputBase) 
-        th = MediaFile.handlerFor(file)
+        th = MediaFile.for(file)
         return nil if !th
         extn = outputType(file)
         
@@ -68,7 +68,7 @@ class WmaDropHandler < DropHandler
     end
 
     def handles?(file)
-        super(file) && !MediaFile.handlerFor(file).drm?
+        super(file) && !MediaFile.for(file).drm?
     end
 end
 

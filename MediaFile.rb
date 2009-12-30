@@ -3,12 +3,12 @@ require "PathUtils"
 class MediaFile
     @@handlers = { }
 
-    def self.handlerFor(file)
+    def self.for(file)
         extn = PathUtils.extension(file).downcase
         k = @@handlers[extn]
         if !k
             begin
-                require "taghandlers/MediaFile_#{extn}"
+                require "mediatypes/MediaFile_#{extn}"
                 k = eval("MediaFile_#{extn}")
                 @@handlers[extn] = k
             rescue LoadError

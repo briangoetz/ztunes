@@ -1,7 +1,7 @@
 require "MediaFile"
 
 ARGV.each do |f|
-    th = MediaFile.handlerFor(f)
+    th = MediaFile.for(f)
     puts "File: #{f}"
     if !th
         puts "No handler for #{f}"

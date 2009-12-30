@@ -74,7 +74,7 @@ task :rename do
     SRC.each do |d|
         FileList["#{d}/**/*"].each do |f|
             next if File.directory?(f)
-            th = MediaFile.handlerFor(f)
+            th = MediaFile.for(f)
             next if th == nil
             relPath = PathUtils.relativePath(f, d)
             extn = PathUtils.extension(f)
@@ -93,7 +93,7 @@ task :checktags do
     SRC.each do |d|
         FileList["#{d}/**/*"].each do |f|
             next if File.directory?(f)
-            th = MediaFile.handlerFor(f)
+            th = MediaFile.for(f)
             next if th == nil
 
             puts "Missing ARTIST: #{f}" if !th.artist
