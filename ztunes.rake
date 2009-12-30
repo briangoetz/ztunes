@@ -17,12 +17,16 @@ THRESHOLD = 10
 @sourceDirs = { "wav" => AUDIO, 
                 "mp3" => AUDIO,
                 "wma" => AUDIO,
+                "m4a" => AUDIO,
+                "flac" => AUDIO,
                 "TiVo" => VIDEO
               }
 
 @handlers = { "wav" => WavDropHandler.new, 
               "mp3" => Mp3DropHandler.new,
-              "wma" => WmaDropHandler.new }
+              "wma" => WmaDropHandler.new,
+              "flac" => FlacDropHandler.new,
+              "m4a" => AacDropHandler.new }
 
 ## 
 ## End Configuration

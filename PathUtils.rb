@@ -41,6 +41,10 @@ module PathUtils
             : Dir.entries(dir) - [".", ".."] 
     end 
 
+    def self.extension(file) 
+        File.extname(file).sub(/^\./, "")
+    end
+
     def self.escape(s) 
         # How many backslashes?  Keep adding more until it works.
         s.gsub(/([()`'"&;, ])/, '\\\\\\1') 

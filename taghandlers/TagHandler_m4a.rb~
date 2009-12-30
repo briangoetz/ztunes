@@ -1,0 +1,23 @@
+require "rubygems"
+require "mp4info"
+
+class TagHandler_m4a
+    def initialize(file)
+        @info = MP4Info.open(file)
+    end
+
+    @@methodToTags = { 
+        :artist => :ART, 
+        :album => :ALB, 
+        :title => :NAM, 
+        :genre => :GEN,
+        :tracknumber => :TRKN
+    }
+
+    @@methodToTags.each { |k,v|
+        TagHandler_mp3.send :define_method, k do
+            @info.tag.send v
+        end
+    }
+end
+

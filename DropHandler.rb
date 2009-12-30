@@ -1,6 +1,5 @@
-require "rubygems"
-require "mp3info"
-require "wmainfo"
+require "TagHandler"
+require "PathUtils"
 
 class DropHandler
     attr_accessor :typeMap
@@ -9,15 +8,31 @@ class DropHandler
     @isTransform = false
 
     def outputType(file)
-        ext = file.pathmap("%x").sub!(/^\./, "")
-        @typeMap[ext]
+        @typeMap[PathUtils.extension(file)]
     end
 
     def handles?(file)
         outputType(file) != nil
     end
 
+    def getOutputFile(file, inputBase) 
+        th = TagHandler.handlerFor(file)
+        return nil if !th
+        extn = outputType(file)
+        
+        artist = th.artist 
+        album = th.album
+        title = th.title
+
+        artist = "Unknown Artist" if !artist
+        album = "Unknown Album" if !album
+        title = "Unknown Title" if !title
+
+        title += ".#{extn}" if extn
+        File.join(artist, album, title)
+    end
 end
+
 
 class WavDropHandler < DropHandler
     def initialize
@@ -47,34 +62,13 @@ class WavDropHandler < DropHandler
 end
 
 
-class AacDropHandler < DropHandler
-    def initialize
-        @typeMap = { "m4a" => "m4a" }
-    end
-
-    # getOutputFile using m4a tags
-end
-
-
 class WmaDropHandler < DropHandler
     def initialize
         @typeMap = { "wma" => "wma" }
     end
 
     def handles?(file)
-        wma = WmaInfo.new(file)
-        super(file) && !wma.hasdrm?
-    end
-
-    def getOutputFile(file, inputBase)
-        wma = WmaInfo.new(file)
-        artist = wma.tags["AlbumArtist"]
-        artist = "Unknown Artist" if artist == nil
-        album = wma.tags["AlbumTitle"]
-        album = "Unknown Album" if album == nil
-        title = wma.tags["Title"]
-        title = "Unknown Title" if title == nil
-        File.join(artist, album, "#{title}.flac")
+        super(file) && !TagHandler.handlerFor(file).drm?
     end
 end
 
@@ -83,10 +77,19 @@ class Mp3DropHandler < DropHandler
     def initialize
         @typeMap = { "mp3" => "mp3" }
     end
+end
 
-    def getOutputFile(file, inputBase)
-        mp3 = Mp3Info.new(file)
-        File.join(mp3.tag.artist, mp3.tag.album, "#{mp3.tag.title}.mp3")
+
+class AacDropHandler < DropHandler
+    def initialize
+        @typeMap = { "m4a" => "m4a" }
+    end
+end
+
+
+class FlacDropHandler < DropHandler
+    def initialize
+        @typeMap = { "flac" => "flac" }
     end
 end
 
@@ -97,15 +100,10 @@ class TivoDropHandler < DropHandler
         @isTransform = true
     end
 
-    # getOutputFile using mp3 tags
-end
-
-
-class FlacDropHandler < DropHandler
-    def initialize
-        @typeMap = { "flac" => "flac" }
+    def getOutputFile(file, inputBase)
+        "#{file.pathmap("%n")}.mp4"
     end
 
-    # getOutputFile using flac tags
+    # getCommand
     # deal with media key
 end
