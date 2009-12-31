@@ -52,10 +52,46 @@ VIEW_FOLDERS = {
 ## End Configuration
 ##
 
-@dryRun = false
 @dropFolders = [ ]
 @viewFolders = [ ]
 @folderCounter = 0
+
+class ZTunesExec
+    attr_accessor :dryRun
+
+    @dryRun = false
+
+    def doFileCmd(cmd, *args)
+        begin
+            args = args.each { |s| s = PathUtils.escape(s) };
+            if (@dryRun)
+                puts "#{cmd} #{args.join(' ')}"
+            else
+                self.send cmd, *args if !@dryRun
+            end
+        rescue
+            puts "Exception: " + $!
+            puts "  executing #{cmd} #{args.join(' ')}"
+        end
+    end
+
+    def doCmd(cmd)
+        begin
+            puts "#{cmd}"
+            if !@dryRun
+                Kernel.system cmd
+                $?
+            else
+                0
+            end
+        rescue
+            puts "...execution error: " + $!
+            $?
+        end
+    end
+end
+
+EXEC = ZTunesExec.new
 
 #
 # Task :drop scans the DROP folder, and looks for any files of a type
@@ -80,21 +116,21 @@ DROP_FOLDERS.each do |dir, types|
                     outputFile = File.join(outputBase,
                                            handler.getOutputFile(f, DROP))
                     outputDir = outputFile.pathmap("%d")
-                    doFileCmd(:mv, f, stageFile)
-                    doFileCmd(:mkdir_p, outputDir) if !File.exist?(outputDir)
+                    EXEC.doFileCmd(:mv, f, stageFile)
+                    EXEC.doFileCmd(:mkdir_p, outputDir) if !File.exist?(outputDir)
                     if handler.is_transform
                         tmpFile = stageFile + "_"
                         # TODO thread these
                         # TODO turn doCmd into doProc
-                        success = doCmd(handler.getCommand(stageFile, tmpFile))
+                        success = EXEC.doCmd(handler.getCommand(stageFile, tmpFile))
                         if (success)
-                            doFileCmd(:mv, tmpFile, outputFile)
-                            doFileCmd(:rm, stageFile)
+                            EXEC.doFileCmd(:mv, tmpFile, outputFile)
+                            EXEC.doFileCmd(:rm, stageFile)
                         else
-                            doFileCmd(:rm, tmpFile) if File.exist?(tmpFile)
+                            EXEC.doFileCmd(:rm, tmpFile) if File.exist?(tmpFile)
                         end 
                     else
-                        doFileCmd(:mv, stageFile, outputFile)
+                        EXEC.doFileCmd(:mv, stageFile, outputFile)
                     end
                 end
             end
@@ -109,7 +145,7 @@ VIEW_FOLDERS.each do |dir, config|
     taskName = target ? target : "view_#{counter}"
     task :views => [ taskName ]
     task taskName do
-
+        # TODO
     end
 end
 
@@ -120,7 +156,7 @@ end
 #
 
 task :preview do
-    @dryRun = true
+    EXEC.dryRun = true
 end
 
 
@@ -138,7 +174,7 @@ task :rename do
             relPath = PathUtils.relativePath(f, d)
             shouldBe = th.fileName
             if (relPath != shouldBe)
-                doFileCmd(:mv, f, File.join(d, shouldBe))
+                EXEC.doFileCmd(:mv, f, File.join(d, shouldBe))
             end
         end
     end
@@ -174,7 +210,7 @@ task :mp3 do
             extn = PathUtils.extension(f)
             # next if not audio
             if (extn == "mp3")
-                # doFileCmd :ln_s
+                # EXEC.doFileCmd :ln_s
             else
                 # transcode
             end
@@ -205,7 +241,7 @@ task :prune => [ :prune_src, :prune_drop ]
 def pruneDeadLinks(dir)
     FileList["#{dir}/**/*"].each do |f|
         if (File.symlink?(f) && File.readlink(f) != nil)
-            doFileCmd :rm, f
+            EXEC.doFileCmd :rm, f
         end
     end
 end
@@ -217,38 +253,10 @@ def pruneEmptyDirs(dir, depth = 0)
         .each   { |s| pruneEmptyDirs(s, depth+1) }
 
     if depth > 0 && PathUtils.dirEntries(dir).empty? 
-        doFileCmd :rmdir, dir
+        EXEC.doFileCmd :rmdir, dir
     end
 end 
-
-def doFileCmd(cmd, *args)
-    begin
-        args = args.each { |s| s = PathUtils.escape(s) };
-        if (@dryRun) 
-            puts "#{cmd} #{args.join(' ')}"
-        else
-            self.send cmd, *args if !@dryRun
-        end
-    rescue
-        puts "Exception: " + $!
-        puts "  executing #{cmd} #{args.join(' ')}"
-    end 
-end
-
-def doCmd(cmd)
-    begin
-        puts "#{cmd}"
-        Kernel.system cmd if !@dryRun
-        $?
-    rescue
-        puts "...execution error: " + $!
-        $?
-    end 
-end
 
 task :default do
 end
 
-class ZTunesExec
-    
-end
