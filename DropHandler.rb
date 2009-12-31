@@ -5,7 +5,7 @@ require "PathUtils"
 class DropHandler < FileHandler
 end
 
-class WavDropHandler < DropHandler
+class WavToFlacDropHandler < DropHandler
     def initialize
         super({ "wav" => "flac" }, true)
     end
@@ -22,7 +22,7 @@ class WavDropHandler < DropHandler
         MediaFile.nameFromTags(tags, :audio, "flac")
     end
 
-    def getCommand(file, outputFile)
+    def getCommand(file, outputFile) 
         genre, artist, album, trackNo, title = file.pathmap("%n").split("#")
         return "flac --best --replay-gain --silent " \
                 + "-T \"artist=#{artist}\" -T \"title=#{title}\" " \

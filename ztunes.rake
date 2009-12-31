@@ -20,11 +20,11 @@ SRC = [ "#{BASE}/music", "/home/media/music"  ]
 
 DROP_FOLDERS = {
         DROP => {
-                "wav"  => { :handler => WavDropHandler.new,  :toDir => AUDIO },
+                "wav"  => { :handler => WavToFlacDropHandler.new,  :toDir => AUDIO },
                 "mp3"  => { :handler => SimpleDropHandler.new("mp3"),  :toDir => AUDIO },
                 "wma"  => { :handler => WmaDropHandler.new,  :toDir => AUDIO },
                 "flac" => { :handler => SimpleDropHandler.new("flac"), :toDir => AUDIO },
-                "m4a"  => { :handler => SimpleDropHandler.new("aac"),  :toDir => AUDIO }
+                "m4a"  => { :handler => SimpleDropHandler.new("m4a"),  :toDir => AUDIO }
         }
 }
 
@@ -113,8 +113,7 @@ DROP_FOLDERS.each do |dir, types|
                         handler.handles?(f))
                     stageFile = PathUtils.computeRelative(f, DROP, STAGE)
                     outputBase = config[:toDir]
-                    outputFile = File.join(outputBase,
-                                           handler.getOutputFile(f, DROP))
+                    outputFile = File.join(outputBase, handler.getOutputFile(f, DROP))
                     outputDir = outputFile.pathmap("%d")
                     EXEC.doFileCmd(:mv, f, stageFile)
                     EXEC.doFileCmd(:mkdir_p, outputDir) if !File.exist?(outputDir)
@@ -128,7 +127,7 @@ DROP_FOLDERS.each do |dir, types|
                             EXEC.doFileCmd(:rm, stageFile)
                         else
                             EXEC.doFileCmd(:rm, tmpFile) if File.exist?(tmpFile)
-                        end 
+                        end
                     else
                         EXEC.doFileCmd(:mv, stageFile, outputFile)
                     end
