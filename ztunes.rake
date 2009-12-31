@@ -76,12 +76,16 @@ DROP_FOLDERS.each do |dir, types|
                     doFileCmd(:mv, f, stageFile)
                     doFileCmd(:mkdir_p, outputDir) if !File.exist?(outputDir)
                     if handler.is_transform
+                        tmpFile = stageFile + "_"
                         # TODO thread these
-                        # catch exceptions?
-                        # TODO write to temporary output file, then rename
                         # TODO turn doCmd into doProc
-                        doCmd(handler.getCommand(stageFile, outputFile))
-                        doFileCmd(:rm, stageFile)
+                        success = doCmd(handler.getCommand(stageFile, tmpFile))
+                        if (success)
+                            doFileCmd(:mv, tmpFile, outputFile)
+                            doFileCmd(:rm, stageFile)
+                        else
+                            doFileCmd(:rm, tmpFile) if File.exist?(tmpFile)
+                        end 
                     else
                         doFileCmd(:mv, stageFile, outputFile)
                     end
@@ -218,8 +222,10 @@ def doCmd(cmd)
     begin
         puts "#{cmd}"
         Kernel.system cmd if !@dryRun
+        $?
     rescue
         puts "...execution error: " + $!
+        $?
     end 
 end
 
