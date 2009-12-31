@@ -14,25 +14,41 @@ VIDEO = "#{BASE}/video"
 MP3 = "#{BASE}/mp3"
 THRESHOLD = 120
 
-@sourceDirs = { "wav" => AUDIO, 
-                "mp3" => AUDIO,
-                "wma" => AUDIO,
-                "m4a" => AUDIO,
-                "flac" => AUDIO,
-                "TiVo" => VIDEO
-              }
+DROP_FOLDERS = {
+        DROP => {
+                "wav"  => { :handler => WavDropHandler.new,  :toDir => AUDIO },
+                "mp3"  => { :handler => Mp3DropHandler.new,  :toDir => AUDIO },
+                "wma"  => { :handler => WmaDropHandler.new,  :toDir => AUDIO },
+                "flac" => { :handler => FlacDropHandler.new, :toDir => AUDIO },
+                "m4a"  => { :handler => AacDropHandler.new,  :toDir => AUDIO }
+        }
+}
 
-@handlers = { "wav" => WavDropHandler.new, 
-              "mp3" => Mp3DropHandler.new,
-              "wma" => WmaDropHandler.new,
-              "flac" => FlacDropHandler.new,
-              "m4a" => AacDropHandler.new }
+#SHADOW_FOLDERS = {
+#        MP3 => { :fromDirs => [ AUDIO ],
+#                 :supportedTypes => [ "mp3" ],
+#                 :transcode => { "flac" => FlacToMp3.new }
+#        },
+#        IPOD => { },
+#        SQUEEZEBOX => { }
+#        }
+
+@sourceDirs = {
+        "wav" => AUDIO,
+        "mp3" => AUDIO,
+        "wma" => AUDIO,
+        "m4a" => AUDIO,
+        "flac" => AUDIO,
+        "TiVo" => VIDEO }
+
 
 ## 
 ## End Configuration
 ##
 
 @dryRun = false
+@dropFolders = [ ]
+@dropCounter = 0
 
 #
 # Task :drop scans the DROP folder, and looks for any files of a type
@@ -41,37 +57,39 @@ THRESHOLD = 120
 # based on the file type.
 #
 
-def installDropHandler(type, handler) 
-    @handlers[type] = handler
-    taskName = "drop_#{type}"
-    task :drop => [ taskName ]
-    task taskName do
-        FileList["#{DROP}/*.#{type}"].each do |f|
-            if ((Time.now - File.stat(f).mtime > THRESHOLD) &&
-                handler.handles?(f))
-                stageFile = PathUtils.computeRelative(f, DROP, STAGE)
-                outputBase = @sourceDirs[type]
-                outputFile = File.join(outputBase, 
-                                       handler.getOutputFile(f, DROP))
-                outputDir = outputFile.pathmap("%d")
-                doFileCmd(:mv, f, stageFile)
-                doFileCmd(:mkdir_p, outputDir) if !File.exist?(outputDir)
-                if handler.isTransform
-                    # TODO thread these
-                    # catch exceptions?
-                    # TODO write to temporary output file, then rename
-                    doCmd(handler.getCommand(stageFile, outputFile))
-                    doFileCmd(:rm, stageFile)
-                else
-                    doFileCmd(:mv, stageFile, outputFile)
+DROP_FOLDERS.each do |dir, types|
+    @dropFolders << dir
+    counter = ++@dropCounter
+    types.each do |type, config|
+        handler = config[:handler]
+        taskName = "drop_#{type}_#{counter}"
+        task :drop => [ taskName ]
+        task taskName do
+            FileList["#{dir}/*.#{type}"].each do |f|
+                if ((Time.now - File.stat(f).mtime > THRESHOLD) &&
+                        handler.handles?(f))
+                    stageFile = PathUtils.computeRelative(f, DROP, STAGE)
+                    outputBase = config[:toDir]
+                    outputFile = File.join(outputBase,
+                                           handler.getOutputFile(f, DROP))
+                    outputDir = outputFile.pathmap("%d")
+                    doFileCmd(:mv, f, stageFile)
+                    doFileCmd(:mkdir_p, outputDir) if !File.exist?(outputDir)
+                    if handler.is_transform
+                        # TODO thread these
+                        # catch exceptions?
+                        # TODO write to temporary output file, then rename
+                        # TODO turn doCmd into doProc
+                        doCmd(handler.getCommand(stageFile, outputFile))
+                        doFileCmd(:rm, stageFile)
+                    else
+                        doFileCmd(:mv, stageFile, outputFile)
+                    end
                 end
             end
         end
     end
 end
-
-@handlers.each { |k,v| installDropHandler(k, v) }
-
 
 #
 # Task :preview is like the -n switch for make; when put at the beginning
@@ -98,9 +116,7 @@ task :rename do
             relPath = PathUtils.relativePath(f, d)
             shouldBe = th.fileName
             if (relPath != shouldBe)
-                puts "file: #{relPath}"
-                puts "tags: #{shouldBe}"
-                #doFileCmd(:mv, f, File.join(d, shouldBe))
+                doFileCmd(:mv, f, File.join(d, shouldBe))
             end
         end
     end
@@ -136,7 +152,7 @@ task :mp3 do
             extn = PathUtils.extension(f)
             # next if not audio
             if (extn == "mp3")
-                # ln -s
+                # doFileCmd :ln_s
             else
                 # transcode
             end
@@ -158,10 +174,22 @@ task :prune_mp3 do
     pruneEmptyDirs(MP3)
 end
 
-task :prune => [ :prune_src, :prune_mp3 ]
+task :prune_drop do
+    DROP_FOLDERS.each_key {|k| pruneEmptyDirs(k) }
+end
+
+task :prune => [ :prune_src, :prune_mp3, :prune_drop ]
 
 
-def pruneEmptyDirs(dir, depth = 0) 
+def pruneDeadLinks(dir)
+    FileList["#{dir}/**/*"].each do |f|
+        if (File.symlink?(f) && File.readlink(f) != nil)
+            doFileCmd :rm, f
+        end
+    end
+end
+
+def pruneEmptyDirs(dir, depth = 0)
     PathUtils.dirEntries(dir) \
         .map    { |f| File.join(dir, f) } \
         .select { |f| File.directory? f } \

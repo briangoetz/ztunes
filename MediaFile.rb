@@ -3,7 +3,7 @@ require "PathUtils"
 class MediaFile
     @@handlers = { }
 
-    def initialize(extension = "", kind = :audio)
+    def initialize(extension, kind = :audio)
         @extension = extension
         @kind = kind
     end
@@ -12,31 +12,43 @@ class MediaFile
         @@handlers.keys
     end
 
+    def self.tryLoad(extn)
+        begin
+            require "mediatypes/MediaFile_#{extn}"
+            k = eval("MediaFile_#{extn}")
+            @@handlers[extn] = k
+        rescue LoadError
+            @@handlers[extn] = false
+            # fail silently
+        rescue
+            @@handlers[extn] = false
+            puts "Error loading tag handler for #{extn}: #{$!}"
+        end
+        return k
+    end
+
+    def self.supported(file)
+        extn = PathUtils.extension(file).downcase
+        k = @@handlers[extn]
+        k = tryLoad(extn) if k == nil
+        return (k != nil)
+    end
+
     def self.for(file)
         extn = PathUtils.extension(file).downcase
         k = @@handlers[extn]
-        if !k
-            begin
-                require "mediatypes/MediaFile_#{extn}"
-                k = eval("MediaFile_#{extn}")
-                @@handlers[extn] = k
-            rescue LoadError
-                puts "Error loading tag handler for #{extn}: #{$!}"
-            rescue
-                puts "Error loading tag handler for #{extn}: #{$!}"
-            end
-        end
+        k = tryLoad(extn) if k == nil
         begin
             k ? k.new(file) : nil
         rescue
-            puts "Error instantating tag handler for #{file}: #{$!}"
+            puts "Error instantiating tag handler for #{file}: #{$!}"
             nil
         end
     end
 
     def tags
-        tags = { :artist => artist, :album => album, :title => title,
-                 :tracknumber => tracknumber, :genre => genre }
+        { :artist => artist, :album => album, :title => title,
+          :tracknumber => tracknumber, :genre => genre }
     end
 
     def tagFromHash(tags, key)
@@ -53,10 +65,10 @@ class MediaFile
     def fileName()
         tags = { :artist => artist, :album => album, :title => title,
                  :tracknumber => tracknumber, :genre => genre }
-        MediaFile.makeFileName(tags, @kind, @extension)
+        MediaFile.nameFromTags(tags, @kind, @extension)
     end
 
-    def self.makeFileName(tags, kind, extension)
+    def self.nameFromTags (tags, kind, extension)
         extn = extension ? ".#{extension}" : ""
         if (kind == :audio) 
             File.join(normalize(:artist, tags[:artist]),

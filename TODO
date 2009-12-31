@@ -10,3 +10,4 @@
  - Document how to write a drop handler, media tag handler
  - Handlers for TiVo files, VOB files
  - iTunes integration
+ - Rails app for ingesting content 
