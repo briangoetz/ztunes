@@ -34,6 +34,13 @@ THRESHOLD = 120
 
 @dryRun = false
 
+#
+# Task :drop scans the DROP folder, and looks for any files of a type
+# for which it has a handler, which has not been modified for at least 
+# THRESHOLD seconds.  It files them into the AUDIO or VIDEO directory, 
+# based on the file type.
+#
+
 def installDropHandler(type, handler) 
     @handlers[type] = handler
     taskName = "drop_#{type}"
@@ -65,10 +72,22 @@ end
 
 @handlers.each { |k,v| installDropHandler(k, v) }
 
+
+#
+# Task :preview is like the -n switch for make; when put at the beginning
+# of the task list, it makes later tasks only print out their actions, but
+# not execute them.
+#
+
 task :preview do
     @dryRun = true
 end
 
+
+# 
+# Task :rename will crawl the source directories, and rename any files whose
+# file names do not match their tags.
+#
 
 task :rename do
     SRC.each do |d|
@@ -87,6 +106,11 @@ task :rename do
     end
 end
 
+
+#
+# Task :checktags crawls through the source directories, and warns if any 
+# files have missing tags
+#
 
 task :checktags do
     SRC.each do |d|
@@ -120,6 +144,11 @@ task :mp3 do
     end
 end
 
+
+#
+# Task :prune will scan the source directories, and will delete any empty
+# directories (which might have been created by renaming).
+#
 
 task :prune_src do
     SRC.each { |d| pruneEmptyDirs(d) }
