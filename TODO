@@ -1,0 +1,11 @@
+ - Configure with YAML
+ - Maintain a parallel directory of MP3 files
+ - Treat MP3 file with no corresponding source as an orphan, and delete
+ - Maintain "view" directories which are links back to source / MP3
+ - Keep view directories in sync with source
+ - Allow file name format to be configured
+ - Allow drop handlers to be configured (e.g., Tivo handler needs media key)
+ - Document external dependencies (including how to build flac)
+ - Document how to write a drop handler, media tag handler
+ - Handlers for TiVo files, VOB files
+ - iTunes integration
