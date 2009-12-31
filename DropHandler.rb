@@ -34,34 +34,22 @@ class WavDropHandler < DropHandler
 end
 
 
-class WmaDropHandler < DropHandler
+class SimpleDropHandler < DropHandler
+    def initialize(extn, opts = {})
+        typeMap = {}
+        extn.to_a.each { |e| typeMap[e] = e }
+        super(typeMap)
+    end
+end
+
+
+class WmaDropHandler < SimpleDropHandler
     def initialize
-        super({ "wma" => "wma" })
+        super("wma")
     end
 
     def handles?(file)
         super(file) && !MediaFile.for(file).drm?
-    end
-end
-
-
-class Mp3DropHandler < DropHandler
-    def initialize(opts = {})
-        super({ "mp3" => "mp3" })
-    end
-end
-
-
-class AacDropHandler < DropHandler
-    def initialize(opts = {})
-        super({ "m4a" => "m4a" })
-    end
-end
-
-
-class FlacDropHandler < DropHandler
-    def initialize(opts = {})
-        super({ "flac" => "flac" })
     end
 end
 

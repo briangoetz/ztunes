@@ -1,5 +1,6 @@
 require "PathUtils"
 require "DropHandler"
+require "Transcoders"
 
 ##
 ## Configuration 
@@ -8,47 +9,53 @@ require "DropHandler"
 BASE = "."
 DROP = "#{BASE}/drop"
 STAGE = "#{BASE}/stage"
-SRC = [ "#{BASE}/music", "/home/media/music"  ]
-AUDIO = "#{BASE}/music" 
-VIDEO = "#{BASE}/video" 
+AUDIO = "#{BASE}/music"
+IPOD = "#{BASE}/ipod" 
+SQUEEZEBOX = "#{BASE}/squeezebox"
+VIDEO = "#{BASE}/video"
 MP3 = "#{BASE}/mp3"
 THRESHOLD = 120
+
+SRC = [ "#{BASE}/music", "/home/media/music"  ]
 
 DROP_FOLDERS = {
         DROP => {
                 "wav"  => { :handler => WavDropHandler.new,  :toDir => AUDIO },
-                "mp3"  => { :handler => Mp3DropHandler.new,  :toDir => AUDIO },
+                "mp3"  => { :handler => SimpleDropHandler.new("mp3"),  :toDir => AUDIO },
                 "wma"  => { :handler => WmaDropHandler.new,  :toDir => AUDIO },
-                "flac" => { :handler => FlacDropHandler.new, :toDir => AUDIO },
-                "m4a"  => { :handler => AacDropHandler.new,  :toDir => AUDIO }
+                "flac" => { :handler => SimpleDropHandler.new("flac"), :toDir => AUDIO },
+                "m4a"  => { :handler => SimpleDropHandler.new("aac"),  :toDir => AUDIO }
         }
 }
 
-#SHADOW_FOLDERS = {
-#        MP3 => { :fromDirs => [ AUDIO ],
-#                 :supportedTypes => [ "mp3" ],
-#                 :transcode => { "flac" => FlacToMp3.new }
-#        },
-#        IPOD => { },
-#        SQUEEZEBOX => { }
-#        }
+VIEW_FOLDERS = {
+        # TODO need some sort of key?
+        MP3 => { :target => :mp3,
+                 :fromDirs => [ AUDIO ],
+                 :supportedTypes => [ "mp3" ],
+                 :transcode => { "flac" => FlacToMp3.new,
+                                 "wma" => WmaToMp3.new,
+                                 "m4a" => M4aToMp3.new }
+        },
+        IPOD => { :target => :ipod,
+                  :fromDirs => [ AUDIO, MP3 ],
+                  :supportedTypes => [ "m4a", "mp4", "mp3" ],
+                  :transcode => { "mp4" => Mp4ForIpod.new }
+        },
+        SQUEEZEBOX => { :target => :squeezebox,
+                        :fromDirs => [ AUDIO, MP3 ],
+                        :supportedTypes => [ "flac", "m4a", "wma", "mp3" ]
+        }
+}
 
-@sourceDirs = {
-        "wav" => AUDIO,
-        "mp3" => AUDIO,
-        "wma" => AUDIO,
-        "m4a" => AUDIO,
-        "flac" => AUDIO,
-        "TiVo" => VIDEO }
-
-
-## 
+##
 ## End Configuration
 ##
 
 @dryRun = false
 @dropFolders = [ ]
-@dropCounter = 0
+@viewFolders = [ ]
+@folderCounter = 0
 
 #
 # Task :drop scans the DROP folder, and looks for any files of a type
@@ -59,7 +66,7 @@ DROP_FOLDERS = {
 
 DROP_FOLDERS.each do |dir, types|
     @dropFolders << dir
-    counter = ++@dropCounter
+    counter = ++@folderCounter
     types.each do |type, config|
         handler = config[:handler]
         taskName = "drop_#{type}_#{counter}"
@@ -92,6 +99,17 @@ DROP_FOLDERS.each do |dir, types|
                 end
             end
         end
+    end
+end
+
+VIEW_FOLDERS.each do |dir, config|
+    @viewFolders << dir
+    counter = ++@folderCounter
+    target = config[:target]
+    taskName = target ? target : "view_#{counter}"
+    task :views => [ taskName ]
+    task taskName do
+
     end
 end
 
@@ -174,15 +192,14 @@ task :prune_src do
     SRC.each { |d| pruneEmptyDirs(d) }
 end
 
-task :prune_mp3 do
-    pruneEmptyDirs(MP3)
-end
-
 task :prune_drop do
     DROP_FOLDERS.each_key {|k| pruneEmptyDirs(k) }
 end
 
-task :prune => [ :prune_src, :prune_mp3, :prune_drop ]
+# TODO Add pruneDeadLinks folder for each shadow folder
+# TODO Add pruneEmptyDirs folder for each shadow folder
+
+task :prune => [ :prune_src, :prune_drop ]
 
 
 def pruneDeadLinks(dir)
@@ -230,4 +247,8 @@ def doCmd(cmd)
 end
 
 task :default do
+end
+
+class ZTunesExec
+    
 end
