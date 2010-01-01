@@ -16,8 +16,6 @@ VIDEO = "#{BASE}/video"
 MP3 = "#{BASE}/mp3"
 THRESHOLD = 120
 
-SRC = [ "#{BASE}/music", "/home/media/music"  ]
-
 DROP_FOLDERS = {
         DROP => {
                 "wav"  => { :handler => WavToFlacDropHandler.new,  :toDir => AUDIO },
@@ -29,7 +27,6 @@ DROP_FOLDERS = {
 }
 
 VIEW_FOLDERS = {
-        # TODO need some sort of key?
         MP3 => { :target => :mp3,
                  :fromDirs => [ AUDIO ],
                  :supportedTypes => [ "mp3" ],
@@ -39,7 +36,7 @@ VIEW_FOLDERS = {
         },
         IPOD => { :target => :ipod,
                   :fromDirs => [ AUDIO, MP3 ],
-                  :supportedTypes => [ "m4a", "mp4", "mp3" ],
+                  :supportedTypes => [ "m4a", "mp3" ],
                   :transcode => { "mp4" => Mp4ForIpod.new }
         },
         SQUEEZEBOX => { :target => :squeezebox,
@@ -48,6 +45,8 @@ VIEW_FOLDERS = {
         }
 }
 
+ADDITIONAL_SOURCES = [ "/home/media/music" ]
+
 ##
 ## End Configuration
 ##
@@ -55,8 +54,16 @@ VIEW_FOLDERS = {
 @dropFolders = [ ]
 @viewFolders = [ ]
 @folderCounter = 0
+@sourceFolders = [ ]
+@viewTargets = { }
+ALL_FILES = File.join("**", "*")
 
+#
+# Encapsulate conditional execution, printing to console, and thread management
+# Unfortunately we have to define this inside the rakefile to pick up all the rake goodies, and define it first...
+#
 class ZTunesExec
+    # TODO: add threading support
     attr_accessor :dryRun
 
     @dryRun = false
@@ -93,6 +100,11 @@ end
 
 EXEC = ZTunesExec.new
 
+DROP_FOLDERS.each_value { |types| types.each_value { |config| @sourceFolders << config[:toDir] } }
+VIEW_FOLDERS.each_value { |config| @sourceFolders = @sourceFolders | config[:fromDirs].to_a }
+@sourceFolders = @sourceFolders | ADDITIONAL_SOURCES.to_a
+@sourceFolders.uniq!
+
 #
 # Task :drop scans the DROP folder, and looks for any files of a type
 # for which it has a handler, which has not been modified for at least 
@@ -108,43 +120,79 @@ DROP_FOLDERS.each do |dir, types|
         taskName = "drop_#{type}_#{counter}"
         task :drop => [ taskName ]
         task taskName do
-            FileList["#{dir}/*.#{type}"].each do |f|
+            FileList[File.join(dir, "*.#{type}")].each do |f|
                 if ((Time.now - File.stat(f).mtime > THRESHOLD) &&
                         handler.handles?(f))
-                    stageFile = PathUtils.computeRelative(f, DROP, STAGE)
+                    stageFile = PathUtils.computeRelative(f, dir, STAGE)
                     outputBase = config[:toDir]
-                    outputFile = File.join(outputBase, handler.getOutputFile(f, DROP))
+                    outputFile = File.join(outputBase, handler.getOutputFile(f, dir))
                     outputDir = outputFile.pathmap("%d")
                     EXEC.doFileCmd(:mv, f, stageFile)
                     EXEC.doFileCmd(:mkdir_p, outputDir) if !File.exist?(outputDir)
-                    if handler.is_transform
-                        tmpFile = stageFile + "_"
-                        # TODO thread these
-                        # TODO turn doCmd into doProc
-                        success = EXEC.doCmd(handler.getCommand(stageFile, tmpFile))
-                        if (success)
-                            EXEC.doFileCmd(:mv, tmpFile, outputFile)
-                            EXEC.doFileCmd(:rm, stageFile)
-                        else
-                            EXEC.doFileCmd(:rm, tmpFile) if File.exist?(tmpFile)
-                        end
-                    else
-                        EXEC.doFileCmd(:mv, stageFile, outputFile)
-                    end
+                    handler.handle(EXEC, stageFile, outputFile)
                 end
             end
         end
     end
 end
 
-VIEW_FOLDERS.each do |dir, config|
-    @viewFolders << dir
+
+#
+# Task :views
+#
+
+VIEW_FOLDERS.each do |viewDir, config|
+    @viewFolders << viewDir
     counter = ++@folderCounter
     target = config[:target]
     taskName = target ? target : "view_#{counter}"
+    @viewTargets[viewDir] = taskName
     task :views => [ taskName ]
     task taskName do
-        # TODO
+        supportedTypes = config[:supportedTypes].to_a
+        transcodeTypes = config[:transcode] ? config[:transcode].keys : []
+        targetsDone = {}
+
+        def iter(types, config)
+            if !types.empty?
+                config[:fromDirs].to_a.each do |d|
+                    FileList[File.join(d, ALL_FILES)].each do |f|
+                        next if File.directory?(f)
+                        extn = PathUtils.extension(f)
+                        next if !types.include?(extn)
+                        yield d, f, extn
+                    end
+                end
+            end
+        end
+
+        # Do the supported types first, then the transcodes
+        iter(supportedTypes, config) do |d, f, extn|
+            target = PathUtils.computeRelative(f, d, viewDir)
+            next if targetsDone[target]
+            targetsDone[target] = f
+            unless uptodate?(target, f)
+                EXEC.doFileCmd(:ln_s, f, target)
+            end
+        end
+        iter(transcodeTypes, config) do |d, f, extn|
+            handler = config[:transcode][extn]
+            target = PathUtils.relativePath(handler.getOutputFile(f, d), viewDir)
+            next if targetsDone[target]
+            targetsDone[target] = f
+            unless uptodate?(target, f)
+                handler.handle(EXEC, f, target)
+            end
+        end
+    end
+end
+
+# If a view points to another view, then create the appropriate dependency
+VIEW_FOLDERS.each do |viewDir, config|
+    config[:fromDirs].to_a.each do |d|
+        if (@viewTargets[d])
+            task @viewTargets[viewDir] => [ @viewTargets[d] ]
+        end
     end
 end
 
@@ -165,8 +213,8 @@ end
 #
 
 task :rename do
-    SRC.each do |d|
-        FileList["#{d}/**/*"].each do |f|
+    @sourceFolders.each do |d|
+        FileList[File.join(d, ALL_FILES)].each do |f|
             next if File.directory?(f)
             th = MediaFile.for(f)
             next if !th
@@ -186,8 +234,8 @@ end
 #
 
 task :checktags do
-    SRC.each do |d|
-        FileList["#{d}/**/*"].each do |f|
+    @sourceFolders.each do |d|
+        FileList[File.join(d, ALL_FILES)].each do |f|
             next if File.directory?(f)
             th = MediaFile.for(f)
             next if !th
@@ -202,44 +250,34 @@ task :checktags do
 end
 
 
-task :mp3 do
-    SRC.each do |d|
-        FileList["#{d}/**/*"].each do |f| 
-            next if File.directory?(f)
-            extn = PathUtils.extension(f)
-            # next if not audio
-            if (extn == "mp3")
-                # EXEC.doFileCmd :ln_s
-            else
-                # transcode
-            end
-        end
-    end
-end
-
-
 #
 # Task :prune will scan the source directories, and will delete any empty
 # directories (which might have been created by renaming).
 #
 
 task :prune_src do
-    SRC.each { |d| pruneEmptyDirs(d) }
+    @sourceFolders.each { |d| pruneEmptyDirs(d) }
 end
 
 task :prune_drop do
     DROP_FOLDERS.each_key {|k| pruneEmptyDirs(k) }
 end
 
-# TODO Add pruneDeadLinks folder for each shadow folder
-# TODO Add pruneEmptyDirs folder for each shadow folder
+task :prune_views do
+    VIEW_FOLDERS.each_key {|k| pruneEmptyDirs(k) }
+end
 
-task :prune => [ :prune_src, :prune_drop ]
+task :prune_view_links do
+    VIEW_FOLDERS.each_key {|k| pruneDeadLinks(k) }
+end
+
+task :prune => [ :prune_src, :prune_drop, :prune_views, :prune_view_links ]
 
 
 def pruneDeadLinks(dir)
-    FileList["#{dir}/**/*"].each do |f|
-        if (File.symlink?(f) && File.readlink(f) != nil)
+    # TODO Extend this to follow chains of links
+    FileList[File.join(dir, ALL_FILES)].each do |f|
+        if (File.symlink?(f) && !File.exist?(File.readlink(f)))
             EXEC.doFileCmd :rm, f
         end
     end

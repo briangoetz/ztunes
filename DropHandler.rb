@@ -3,6 +3,23 @@ require "MediaFile"
 require "PathUtils"
 
 class DropHandler < FileHandler
+    def handle(exec, inputFile, outputFile)
+        if is_transform
+            tmpFile = inputFile + "_"
+            # TODO support threading
+            success = transform(exec, inputFile, tmpFile)
+            if (success)
+                exec.doFileCmd(:mv, tmpFile, outputFile)
+                exec.doFileCmd(:rm, inputFile)
+            else
+                exec.doFileCmd(:rm, tmpFile) if File.exist?(tmpFile)
+            end
+            success
+        else
+            exec.doFileCmd(:mv, inputFile, outputFile)
+            true
+        end
+    end
 end
 
 class WavToFlacDropHandler < DropHandler
@@ -22,14 +39,15 @@ class WavToFlacDropHandler < DropHandler
         MediaFile.nameFromTags(tags, :audio, "flac")
     end
 
-    def getCommand(file, outputFile) 
-        genre, artist, album, trackNo, title = file.pathmap("%n").split("#")
-        return "flac --best --replay-gain --silent " \
+    def transform(exec, inputFile, outputFile)
+        genre, artist, album, trackNo, title = inputFile.pathmap("%n").split("#")
+        cmd = "flac --best --replay-gain --silent " \
                 + "-T \"artist=#{artist}\" -T \"title=#{title}\" " \
                 + "-T \"album=#{album}\" -T \"tracknumber=#{trackNo}\" " \
                 + "-T \"genre=#{genre}\" " \
-                + " #{PathUtils.escape(file)} " \
+                + " #{PathUtils.escape(inputFile)} " \
                 + "--output-name=#{PathUtils.escape(outputFile)}"
+        exec.doCmd(cmd)
     end
 end
 
@@ -64,5 +82,8 @@ class TivoDropHandler < DropHandler
         MediaFile.nameFromTags({ :title => file.pathmap("%n") }, :video, "mp4")
     end
 
-    # getCommand
+    def transform(exec, inputFile, outputFile)
+        cmd = "tivodecode -m #{@mediaKey} #{PathUtils.escape(inputFile)} > #{outputFile}"
+        exec.doCmd(cmd)
+    end
 end
