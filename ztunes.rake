@@ -41,7 +41,7 @@ VIEW_FOLDERS = {
         },
         SQUEEZEBOX => { :target => :squeezebox,
                         :fromDirs => [ AUDIO, MP3 ],
-                        :supportedTypes => [ "flac", "m4a", "wma", "mp3" ]
+                        :supportedTypes => [ "flac", "wma", "mp3" ]
         }
 }
 
@@ -70,7 +70,7 @@ class ZTunesExec
 
     def doFileCmd(cmd, *args)
         begin
-            args = args.each { |s| s = PathUtils.escape(s) };
+            args.each { |s| s = PathUtils.escape(s) };
             if (@dryRun)
                 puts "#{cmd} #{args.join(' ')}"
             else
@@ -172,7 +172,9 @@ VIEW_FOLDERS.each do |viewDir, config|
             next if targetsDone[target]
             targetsDone[target] = f
             unless uptodate?(target, f)
-                EXEC.doFileCmd(:ln_s, f, target)
+                outputDir = target.pathmap("%d")
+                EXEC.doFileCmd(:mkdir_p, outputDir) if !File.exist?(outputDir)
+                EXEC.doFileCmd(:ln_s, File.expand_path(f), File.expand_path(target))
             end
         end
         iter(transcodeTypes, config) do |d, f, extn|
@@ -181,6 +183,8 @@ VIEW_FOLDERS.each do |viewDir, config|
             next if targetsDone[target]
             targetsDone[target] = f
             unless uptodate?(target, f)
+                outputDir = target.pathmap("%d")
+                EXEC.doFileCmd(:mkdir_p, outputDir) if !File.exist?(outputDir)
                 handler.handle(EXEC, f, target)
             end
         end
