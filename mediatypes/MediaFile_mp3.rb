@@ -19,10 +19,18 @@ class MediaFile_mp3 < MediaFile
         define_method(k) do
             @info.tag.send v
         end
+
+        define_method("#{k}=") do |val|
+            @info.tag.send "#{v}=", val
+        end
     end
 
     def tags
         @info.tag2
+    end
+
+    def save
+        @info.flush
     end
 end
 

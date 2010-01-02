@@ -3,9 +3,20 @@ require "MediaFile"
 require "PathUtils"
 
 class DropHandler < FileHandler
+    def getOutputFile(file, inputBase)
+        th = MediaFile.for(file)
+        return nil if !th
+        wasExtn = PathUtils.extension(file)
+        newExtn = outputType(file)
+
+        f = th.fileName()
+        f = PathUtils.replaceExtension(f, wasExtn, newExtn) if (wasExtn != newExtn)
+        f
+    end
+
     def handle(exec, inputFile, outputFile)
         if is_transform
-            tmpFile = inputFile + "_"
+            tmpFile = EXEC.tempFile(inputFile)
             # TODO support threading
             success = transform(exec, inputFile, tmpFile)
             if (success)

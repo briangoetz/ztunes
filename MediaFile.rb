@@ -34,8 +34,12 @@ class MediaFile
         return (k != nil)
     end
 
-    def self.for(file)
-        extn = PathUtils.extension(file).downcase
+    def self.for(file, extn = nil)
+        if (extn)
+            extn = extn.downcase
+        else
+            extn = PathUtils.extension(file).downcase
+        end
         k = @@handlers[extn]
         k = tryLoad(extn) if k == nil
         begin
@@ -44,6 +48,18 @@ class MediaFile
             puts "Error instantiating tag handler for #{file}: #{$!}"
             nil
         end
+    end
+
+    def self.copyTagsFrom(inFile, outFile, outFileExtn = nil)
+        inH = MediaFile.for(inFile)
+        outH = MediaFile.for(outFile, outFileExtn)
+        return if !inH || !outH
+        [ :artist, :album, :title, :genre ].each do |t|
+            tag = inH.send t
+            outH.send "#{t}=", tag if tag != nil
+        end
+        outH.tracknumber = inH.tracknumber.to_i
+        outH.save
     end
 
     def tags

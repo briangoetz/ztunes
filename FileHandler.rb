@@ -22,15 +22,4 @@ class FileHandler
     def handles?(file)
         outputType(file) != nil
     end
-
-    def getOutputFile(file, inputBase)
-        th = MediaFile.for(file)
-        return nil if !th
-        wasExtn = PathUtils.extension(file)
-        newExtn = outputType(file)
-
-        f = th.fileName()
-        f = PathUtils.replaceExtension(f, wasExtn, newExtn) if (wasExtn != newExtn)
-        f
-    end
 end

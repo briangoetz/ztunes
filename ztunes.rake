@@ -66,7 +66,10 @@ class ZTunesExec
     # TODO: add threading support
     attr_accessor :dryRun
 
-    @dryRun = false
+    def initialize()
+        @dryRun = false
+        @counter = 0
+    end
 
     def doFileCmd(cmd, *args)
         begin
@@ -95,6 +98,10 @@ class ZTunesExec
             puts "...execution error: " + $!
             $?
         end
+    end
+
+    def tempFile(f)
+        File.join(STAGE, "#{f.pathmap("%f")}-#{$$}-#{(++@counter)}")
     end
 end
 
@@ -171,15 +178,18 @@ VIEW_FOLDERS.each do |viewDir, config|
             target = PathUtils.computeRelative(f, d, viewDir)
             next if targetsDone[target]
             targetsDone[target] = f
+            next if (File.exist?(target) && File.symlink?(target) && File.expand_path(File.readlink(target)) == File.expand_path(f))
             unless uptodate?(target, f)
                 outputDir = target.pathmap("%d")
                 EXEC.doFileCmd(:mkdir_p, outputDir) if !File.exist?(outputDir)
-                EXEC.doFileCmd(:ln_s, File.expand_path(f), File.expand_path(target))
+                target = File.expand_path(target)
+                EXEC.doFileCmd(:rm, target) if File.exist?(target)
+                EXEC.doFileCmd(:ln_s, File.expand_path(f), target)
             end
         end
         iter(transcodeTypes, config) do |d, f, extn|
             handler = config[:transcode][extn]
-            target = PathUtils.relativePath(handler.getOutputFile(f, d), viewDir)
+            target = File.join(viewDir, handler.getOutputFile(f, d))
             next if targetsDone[target]
             targetsDone[target] = f
             unless uptodate?(target, f)

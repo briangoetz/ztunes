@@ -3,11 +3,21 @@ class TranscodeHandler < FileHandler
         super(typeMap, true)
     end
 
+    def getOutputFile(file, inputBase)
+        wasExtn = PathUtils.extension(file)
+        newExtn = outputType(file)
+
+        file = PathUtils.relativePath(file, inputBase)
+        file = PathUtils.replaceExtension(file, wasExtn, newExtn) if (wasExtn != newExtn)
+        file
+    end
+
     def handle(exec, inputFile, outputFile)
-        tmpFile = inputFile + "_"
+        tmpFile = EXEC.tempFile(inputFile)
         # TODO support threading
         success = transform(exec, inputFile, tmpFile)
         if (success)
+            MediaFile.copyTagsFrom(inputFile, tmpFile, PathUtils.extension(outputFile))
             exec.doFileCmd(:mv, tmpFile, outputFile)
         else
             exec.doFileCmd(:rm, tmpFile) if File.exist?(tmpFile)
@@ -22,7 +32,7 @@ class FlacToMp3 < TranscodeHandler
     end
 
     def transform(exec, inputFile, outputFile)
-        cmd = ""
+        cmd = "flac --decode --stdout --silent #{PathUtils.escape(inputFile)} | lame --preset standard --silent - #{PathUtils.escape(outputFile)}"
         exec.doCmd(cmd)
     end
 end
@@ -33,7 +43,7 @@ class WmaToMp3 < TranscodeHandler
     end
 
     def transform(exec, inputFile, outputFile)
-        cmd = ""
+        cmd = "ffmpeg -i #{PathUtils.escape(inputFile)} -f wav - | lame --preset standard --silent - #{PathUtils.escape(outputFile)}"
         exec.doCmd(cmd)
     end
 end
@@ -44,7 +54,7 @@ class M4aToMp3 < TranscodeHandler
     end
 
     def transform(exec, inputFile, outputFile)
-        cmd = ""
+        cmd = "ffmpeg -i #{PathUtils.escape(inputFile)} -f wav - | lame --preset standard --silent - #{PathUtils.escape(outputFile)}"
         exec.doCmd(cmd)
     end
 end
