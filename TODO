@@ -1,5 +1,3 @@
- - Maintain a parallel directory of MP3 files
- - Maintain "view" directories which are links back to source / MP3
  - Treat MP3 file with no corresponding source as an orphan, and delete
  - Keep view directories in sync with source
  - Allow file name format to be configured

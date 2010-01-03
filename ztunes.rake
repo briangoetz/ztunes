@@ -159,27 +159,38 @@ VIEW_FOLDERS.each do |viewDir, config|
         supportedTypes = config[:supportedTypes].to_a
         transcodeTypes = config[:transcode] ? config[:transcode].keys : []
         targetsDone = {}
+        tracksDone = {}
+        sourceFiles = []
 
-        def iter(types, config)
+        config[:fromDirs].to_a.each do |d|
+            FileList[File.join(d, ALL_FILES)].each do |f|
+                sourceFiles << [d, f]
+            end
+        end
+
+        def iter(sourceFiles, types)
             if !types.empty?
-                config[:fromDirs].to_a.each do |d|
-                    FileList[File.join(d, ALL_FILES)].each do |f|
-                        next if File.directory?(f)
-                        extn = PathUtils.extension(f)
-                        next if !types.include?(extn)
-                        yield d, f, extn
-                    end
+                sourceFiles.each do |p|
+                    d, f = p
+                    next if File.directory?(f)
+                    extn = PathUtils.extension(f)
+                    next if !types.include?(extn)
+                    yield d, f, extn
                 end
             end
         end
 
         # Do the supported types first, then the transcodes
-        iter(supportedTypes, config) do |d, f, extn|
+        # Filter out duplicate types; if we've already grabbed a Foo.flac, don't also grab the Foo.mp3
+        iter(sourceFiles, supportedTypes) do |d, f, extn|
             target = PathUtils.computeRelative(f, d, viewDir)
             next if targetsDone[target]
             targetsDone[target] = f
-            next if (File.exist?(target) && File.symlink?(target) && File.expand_path(File.readlink(target)) == File.expand_path(f))
+            trackKey = PathUtils.relativePath(f, d).pathmap("%X")
+            next if tracksDone[trackKey]
+            tracksDone[trackKey] = true
             unless uptodate?(target, f)
+                next if (File.exist?(target) && File.symlink?(target) && File.expand_path(File.readlink(target)) == File.expand_path(f))
                 outputDir = target.pathmap("%d")
                 EXEC.doFileCmd(:mkdir_p, outputDir) if !File.exist?(outputDir)
                 target = File.expand_path(target)
@@ -187,11 +198,14 @@ VIEW_FOLDERS.each do |viewDir, config|
                 EXEC.doFileCmd(:ln_s, File.expand_path(f), target)
             end
         end
-        iter(transcodeTypes, config) do |d, f, extn|
+        iter(sourceFiles, transcodeTypes) do |d, f, extn|
             handler = config[:transcode][extn]
             target = File.join(viewDir, handler.getOutputFile(f, d))
             next if targetsDone[target]
             targetsDone[target] = f
+            trackKey = PathUtils.relativePath(f, d).pathmap("%X")
+            next if tracksDone[trackKey]
+            tracksDone[trackKey] = true
             unless uptodate?(target, f)
                 outputDir = target.pathmap("%d")
                 EXEC.doFileCmd(:mkdir_p, outputDir) if !File.exist?(outputDir)
@@ -283,6 +297,7 @@ end
 
 task :prune_view_links do
     VIEW_FOLDERS.each_key {|k| pruneDeadLinks(k) }
+    # TODO for each non-link file in the view folder, try to find a source, or prune it
 end
 
 task :prune => [ :prune_src, :prune_drop, :prune_views, :prune_view_links ]
