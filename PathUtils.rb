@@ -19,8 +19,9 @@ module PathUtils
     end
 
     def self.computeRelative(file, fromBase, toBase, 
-                                  fromExtn = "", toExtn = "") 
-        f = File.join(toBase, relativePath(file, fromBase))
+                                  fromExtn = "", toExtn = "")
+        f = relativePath(file, fromBase)
+        f = File.join(toBase, f) if f != ""
         f = replaceExtension(f, fromExtn, toExtn) if (fromExtn != "")
         f
     end
@@ -57,7 +58,5 @@ module PathUtils
     end
 end
 
-
-#puts PathUtils.relativePath("/a/b/c/d.e", "/a/")
 #puts PathUtils.computeRelative("/a/b/c/d.e", "/a/b", "/x/y", "e", "f")
 #puts PathUtils.computeRelative("/a/b/c/d.e", "/a/b", "/x/y")

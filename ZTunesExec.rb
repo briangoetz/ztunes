@@ -8,10 +8,10 @@ require "rake"
 class ZTunesExec
     attr_accessor :dryRun
 
-    def initialize()
+    def initialize(maxThreads)
         @dryRun = false
         @counter = 0
-        @semaphore = Semaphore.new MAX_THREADS
+        @semaphore = Semaphore.new maxThreads
         @pendingThreads = [ 0 ]
         @pendingThreads.extend(MonitorMixin)
         @condition = @pendingThreads.new_cond

@@ -72,7 +72,7 @@ ADDITIONAL_SOURCES = [ "/home/media/music" ]
 @viewTargets = { }
 ALL_FILES = File.join("**", "*")
 
-EXEC = ZTunesExec.new
+EXEC = ZTunesExec.new MAX_THREADS
 
 DROP_FOLDERS.each_value { |types| types.each_value { |config| @sourceFolders << config[:toDir] } }
 VIEW_FOLDERS.each_value { |config| @sourceFolders = @sourceFolders | config[:fromDirs].to_a }
