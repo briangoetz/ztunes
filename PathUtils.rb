@@ -49,6 +49,12 @@ module PathUtils
         # How many backslashes?  Keep adding more until it works.
         s.gsub(/([()`'"&;, ])/, '\\\\\\1') 
     end
+
+    def self.isDeadLink(f)
+        return false if !File.symlink?(f)
+        target = File.readlink(f)
+        return !File.exist?(target) || isDeadLink(target)
+    end
 end
 
 

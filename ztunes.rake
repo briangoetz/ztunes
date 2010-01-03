@@ -1,6 +1,8 @@
+require "rubygems"
 require "PathUtils"
 require "DropHandler"
 require "Transcoders"
+require "calibre/semaphore"
 
 ##
 ## Configuration 
@@ -63,12 +65,15 @@ ALL_FILES = File.join("**", "*")
 # Unfortunately we have to define this inside the rakefile to pick up all the rake goodies, and define it first...
 #
 class ZTunesExec
-    # TODO: add threading support
     attr_accessor :dryRun
 
     def initialize()
         @dryRun = false
         @counter = 0
+        @semaphore = Semaphore.new 2
+        @pendingThreads = []
+        @pendingThreads.extend(MonitorMixin)
+        @condition = @pendingThreads.new_cond
     end
 
     def doFileCmd(cmd, *args)
@@ -102,6 +107,31 @@ class ZTunesExec
 
     def tempFile(f)
         File.join(STAGE, "#{f.pathmap("%f")}-#{$$}-#{(++@counter)}")
+    end
+
+    def fork(&proc)
+        begin
+            t = Thread.new(self) do |exec|
+                begin
+                    Thread.stop
+                    @semaphore.wait
+                    proc.call(exec)
+                ensure
+                    @semaphore.signal
+                    @condition.signal
+                end
+            end
+            @pendingThreads.synchronize do
+                @pendingThreads << t
+                Thread.run t
+            end
+        end
+    end
+
+    def join
+        @pendingThreads.synchronize do
+            @condition.wait_while { !@pendingThreads.empty? }
+        end
     end
 end
 
@@ -139,6 +169,7 @@ DROP_FOLDERS.each do |dir, types|
                     handler.handle(EXEC, stageFile, outputFile)
                 end
             end
+            EXEC.join
         end
     end
 end
@@ -212,6 +243,7 @@ VIEW_FOLDERS.each do |viewDir, config|
                 handler.handle(EXEC, f, target)
             end
         end
+        EXEC.join
     end
 end
 
@@ -295,18 +327,20 @@ task :prune_views do
     VIEW_FOLDERS.each_key {|k| pruneEmptyDirs(k) }
 end
 
-task :prune_view_links do
+task :prune_dead_links do
     VIEW_FOLDERS.each_key {|k| pruneDeadLinks(k) }
+end
+
+task :prune_dead_transcodes do
     # TODO for each non-link file in the view folder, try to find a source, or prune it
 end
 
-task :prune => [ :prune_src, :prune_drop, :prune_views, :prune_view_links ]
+task :prune => [ :prune_src, :prune_drop, :prune_views, :prune_dead_links, :prune_dead_transcodes ]
 
 
 def pruneDeadLinks(dir)
-    # TODO Extend this to follow chains of links
     FileList[File.join(dir, ALL_FILES)].each do |f|
-        if (File.symlink?(f) && !File.exist?(File.readlink(f)))
+        if (PathUtils.isDeadLink(f))
             EXEC.doFileCmd :rm, f
         end
     end
