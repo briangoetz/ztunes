@@ -1,0 +1,156 @@
+zTunes is a system for ingesting and synchronizing digital media libraries
+in multiple media formats and for multiple devices.  I built it so that
+we could play all the music in our library on all of our devices (iPods,
+Squeezebox, other MP3 players) without having to transcode everything down
+to the least-common-denominator.
+
+There are three kinds of directories in a zTunes configuration:
+ - Media folders -- these are the authoritative copies of your media,
+using their media tags to structure the subdirectories (e.g.,
+"The Who/Who's Next/Baba O'Reilly.flac").
+ - Drop folders -- these are directories into which you drop new media
+files, to be filed into your media directories.  Filing may simply involve
+copying, or it could involve transcoding or compression.  My metaphor
+for drop folders is the gas tank of an M1 -- you can pour any combustible
+material into it, and the fuel sensors figure out how to burn it.
+ - View folders -- these are directories that are targeted at a
+specific device whose supported media types are known.  For example, you
+might have an iPod directory.  Since iPods can play m4a and mp3 natively,
+the iPod view directory would contain symlinks back to the authoritative
+copy for these files, plus transcoded versions of other files (such as flac
+or wma) in a format that iPod likes.
+
+Here's an example of how you might configure zTunes where you have one
+main media directory for audio files, a single drop folder, and view
+folders for iPod and Squeezebox.  First you configure your directories:
+
+# Drop folder
+DROP = "/home/media/drop"
+
+# Media folders
+AUDIO = "/home/media/music"
+VIDEO = "/home/media/video"
+
+# View folders
+MP3 = "/home/media/views/mp3"
+IPOD = "/home/media/views/ipod"
+SQUEEZEBOX = "/home/media/views/squeezebox"
+
+# The staging directory is a temporary folder for use by zTunes
+STAGE = "/home/media/stage"
+
+Then, you configure your drop folders.  Here, we only have one drop
+folder, which supports wav, mp3, wma, flac, and m4a.  All these files
+will be swept to the AUDIO directory after being processed by the
+specified handler.  For flac, m4a, wma, and mp3, the handler just copies
+the file; for WAV files, the handler encodes it with flac and extracts
+the metadata from the file name (using a naming convention specific to
+the handler).
+
+DROP_FOLDERS = {
+        DROP => {
+                "wav"  => { :handler => WavToFlacDropHandler.new,  :toDir => AUDIO },
+                "mp3"  => { :handler => SimpleDropHandler.new("mp3"),  :toDir => AUDIO },
+                "wma"  => { :handler => WmaDropHandler.new,  :toDir => AUDIO },
+                "flac" => { :handler => SimpleDropHandler.new("flac"), :toDir => AUDIO },
+                "m4a"  => { :handler => SimpleDropHandler.new("m4a"),  :toDir => AUDIO }
+        }
+}
+
+The view folders are the most complicated part.  A view is a directory tree filled with
+symlinks back to the media folders, or transcoded versions of files from the media folders.
+It is allowable to have views of views; the example below shows that.
+
+VIEW_FOLDERS = {
+        MP3 => { :target => :mp3,
+                 :fromDirs => [ AUDIO ],
+                 :supportedTypes => [ "mp3" ],
+                 :transcode => { "flac" => FlacToMp3.new,
+                                 "wma" => WmaToMp3.new,
+                                 "m4a" => M4aToMp3.new }
+        },
+        IPOD => { :target => :ipod,
+                  :fromDirs => [ AUDIO, MP3 ],
+                  :supportedTypes => [ "m4a", "mp3" ],
+                  :transcode => { "mp4" => Mp4ForIpod.new }
+        },
+        SQUEEZEBOX => { :target => :squeezebox,
+                        :fromDirs => [ AUDIO, MP3 ],
+                        :supportedTypes => [ "flac", "wma", "mp3" ]
+        }
+}
+
+Here, we have three view folders -- one consisting of MP3s versions of all the flac,
+wma, and m4a files (this view is then used by both the other views), one for iPod
+(which supports m4a and mp3), and one for Squeezebox (which supports flac, wma, and
+mp3.)
+
+For each view folder, the :fromDirs key points to a list of media folders to
+form a view overs.  The :supportedTypes key points to a list of media types that
+are supported natively; if it finds any of this type in the media directories, it
+creates a symbolic link.  The :transcode key points to a hash of file types and
+transcoding handlers; if it finds any of these types in the media folders, it
+transcodes them.  Supported types take precedence over transcoding, and directories
+earlier in the list of media folders take precedence over those that come later.
+So in this example, even through there is going to be an MP3 version in the MP3
+view for every M4A file in the AUDIO folder, if it finds an M4A version of a track,
+it doesn't also link in the MP3 version.  Careful ordering of the :fromDirs, :transcode,
+and :supportedTypes lists can generally create the result you want.
+
+Other applications:
+ - You may want to keep multiple resolutions of video files, such as one for iPod
+nano-sized devices, another for iPhone, and another for pushing to Myth.  Views
+can do this for you.
+ - You may want to segregate media files by owner, but provide aggregated views.
+For example, maybe your kids rip files using a crappy ripper, and you don't want
+to pollute your main media store.  In that case, you have separate drop and media
+folders for the main store and for the kids store, and then a view that ties them
+together.
+
+
+zTunes is based on rake, so different functionality is invoked through different rake
+targets.  There are three basic classes of targets:
+
+ - Drop targets -- process files from the drop folders
+ - View targets -- generate views from the media folders
+ - Sync targets -- synchronize media folders and views
+
+The :drop target processes all the drop folders.  You can configure a MAX_THREADS
+parameter, which should generally be set to the number of cores your system has,
+so that CPU-intensive activities can take advantage of all available CPUs.
+
+The :views target processes all the view folders.  You can also process the view
+folders individually by invoking the value of the :target key from the view folders
+config.
+
+The :rename target will rename all files in the media folders to follow the naming
+convention #{ARTIST}/#{ALBUM}/#{TRACK}.#{FILETYPE}.  This is helpful after you've
+edited the metadata using a tool like Tag&Rename and want to get the directory
+structure back in sync with the metadata tags.
+
+Executing :rename may create empty directories or break symlinks; the :prune
+target will prune out empty directories and kill dead symlinks in the media and
+view directories.
+
+A sensible order for processing everything is:
+
+  rake -f ztunes.rake drop rename prune views
+
+The :checktags target will crawl the media folders and complain about any files
+that have empty artist, album, track number, genre, or title tags.
+
+Any target can be "pre-flighted" by specifying the :preview target at the start
+of the target list:
+
+  rake -f ztunes.rake preview rename
+
+to see what it is going to do.
+
+
+Things to be added very soon:
+ - Video transcoding support
+
+Things to be added eventually:
+ - iTunes integration
+ - Web app for content ingestion, library management
+ 
