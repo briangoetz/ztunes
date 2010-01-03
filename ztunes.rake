@@ -17,6 +17,7 @@ SQUEEZEBOX = "#{BASE}/squeezebox"
 VIDEO = "#{BASE}/video"
 MP3 = "#{BASE}/mp3"
 THRESHOLD = 120
+MAX_THREADS = 4
 
 DROP_FOLDERS = {
         DROP => {
@@ -70,8 +71,8 @@ class ZTunesExec
     def initialize()
         @dryRun = false
         @counter = 0
-        @semaphore = Semaphore.new 2
-        @pendingThreads = []
+        @semaphore = Semaphore.new MAX_THREADS
+        @pendingThreads = [ 0 ]
         @pendingThreads.extend(MonitorMixin)
         @condition = @pendingThreads.new_cond
     end
@@ -106,31 +107,37 @@ class ZTunesExec
     end
 
     def tempFile(f)
-        File.join(STAGE, "#{f.pathmap("%f")}-#{$$}-#{(++@counter)}")
+        @pendingThreads.synchronize do
+            @counter += 1
+            File.join(STAGE, "#{f.pathmap("%f")}-#{$$}-#{@counter}")
+        end
     end
 
-    def fork(&proc)
+    def defer(&proc)
         begin
-            t = Thread.new(self) do |exec|
-                begin
-                    Thread.stop
-                    @semaphore.wait
-                    proc.call(exec)
-                ensure
-                    @semaphore.signal
-                    @condition.signal
-                end
-            end
             @pendingThreads.synchronize do
-                @pendingThreads << t
-                Thread.run t
+                t = Thread.new(self) do |exec|
+                    begin
+                        Thread.stop
+                        @semaphore.wait
+                        proc.call(exec)
+                    ensure
+                        @semaphore.signal
+                        @pendingThreads.synchronize do
+                            @pendingThreads[0] -= 1
+                            @condition.signal
+                        end
+                    end
+                end
+                @pendingThreads[0] += 1
+                t.run 
             end
         end
     end
 
     def join
         @pendingThreads.synchronize do
-            @condition.wait_while { !@pendingThreads.empty? }
+            @condition.wait_while { @pendingThreads[0] > 0 }
         end
     end
 end
@@ -151,7 +158,8 @@ VIEW_FOLDERS.each_value { |config| @sourceFolders = @sourceFolders | config[:fro
 
 DROP_FOLDERS.each do |dir, types|
     @dropFolders << dir
-    counter = ++@folderCounter
+    @folderCounter += 1
+    counter = @folderCounter
     types.each do |type, config|
         handler = config[:handler]
         taskName = "drop_#{type}_#{counter}"
@@ -181,7 +189,8 @@ end
 
 VIEW_FOLDERS.each do |viewDir, config|
     @viewFolders << viewDir
-    counter = ++@folderCounter
+    @folderCounter += 1
+    counter = @folderCounter
     target = config[:target]
     taskName = target ? target : "view_#{counter}"
     @viewTargets[viewDir] = taskName

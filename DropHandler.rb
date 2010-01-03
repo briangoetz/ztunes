@@ -16,19 +16,18 @@ class DropHandler < FileHandler
 
     def handle(exec, inputFile, outputFile)
         if is_transform
-            tmpFile = EXEC.tempFile(inputFile)
-            # TODO support threading
-            success = transform(exec, inputFile, tmpFile)
-            if (success)
-                exec.doFileCmd(:mv, tmpFile, outputFile)
-                exec.doFileCmd(:rm, inputFile)
-            else
-                exec.doFileCmd(:rm, tmpFile) if File.exist?(tmpFile)
+            exec.defer do |exec|
+                tmpFile = exec.tempFile(inputFile)
+                success = transform(exec, inputFile, tmpFile)
+                if (success)
+                    exec.doFileCmd(:mv, tmpFile, outputFile)
+                    exec.doFileCmd(:rm, inputFile)
+                else
+                    exec.doFileCmd(:rm, tmpFile) if File.exist?(tmpFile)
+                end
             end
-            success
         else
             exec.doFileCmd(:mv, inputFile, outputFile)
-            true
         end
     end
 end

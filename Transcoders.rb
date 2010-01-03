@@ -13,16 +13,16 @@ class TranscodeHandler < FileHandler
     end
 
     def handle(exec, inputFile, outputFile)
-        tmpFile = EXEC.tempFile(inputFile)
-        # TODO support threading
-        success = transform(exec, inputFile, tmpFile)
-        if (success)
-            MediaFile.copyTagsFrom(inputFile, tmpFile, PathUtils.extension(outputFile))
-            exec.doFileCmd(:mv, tmpFile, outputFile)
-        else
-            exec.doFileCmd(:rm, tmpFile) if File.exist?(tmpFile)
+        exec.defer do |exec|
+            tmpFile = exec.tempFile(inputFile)
+            success = transform(exec, inputFile, tmpFile)
+            if (success)
+                MediaFile.copyTagsFrom(inputFile, tmpFile, PathUtils.extension(outputFile))
+                exec.doFileCmd(:mv, tmpFile, outputFile)
+            else
+                exec.doFileCmd(:rm, tmpFile) if File.exist?(tmpFile)
+            end
         end
-        success
     end
 end
 
