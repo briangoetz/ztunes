@@ -65,7 +65,8 @@ class Mp4ForIpod < TranscodeHandler
     end
 
     def transform(exec, inputFile, outputFile)
-        cmd = ""
+        title = inputFile.pathmap("%n")
+        cmd = "ffmpeg -y -i #{PathUtils.escape(inputFile)} -f mp4 -metadata title='#{title}' -vcodec libx264 -level 21 -s 480x320 -b 768k -bt 768k -bufsize 4M -maxrate 4M -g 250 -coder 0 -flags +loop -cmp +chroma -partitions +parti4x4+partp8x8+partb8x8 -flags2 +mixed_refs -me_method umh -subq 6 -trellis 1 -refs 3 -me_range 16 -keyint_min 25 -sc_threshold 40 -i_qfactor 0.71 -qmin 10 -qmax 51 -qdiff 4 -threads 0 -acodec libfaac -ac 2 -ab 128k #{PathUtils.escape(outputFile)}"
         exec.doCmd(cmd)
     end
 end
