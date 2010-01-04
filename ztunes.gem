@@ -1,0 +1,17 @@
+require "rubygems"
+
+SPEC = Gem::Specification.new do |s|
+    s.name = "ztunes"
+    s.version = "0.2"
+    s.author = "Brian Goetz"
+    s.email = "brian@briangoetz.com"
+    s.platform = Gem::Platform::RUBY
+    s.summary = "zTunes Digital Media Management System"
+    candidates = Dir.glob("{bin,lib,docs,test/**/*")
+    s.files = candidates
+    s.require_path = "lib"
+    s.add_dependency("calibre-semaphore", ">= 1.0.0")
+    s.add_dependency("flacinfo-rb", ">= 0.4")
+    s.add_dependency("MP4Info", ">= 0.3.3")
+    s.add_dependency("ruby-mp3info", ">= 0.6.13")
+end
