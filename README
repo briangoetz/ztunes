@@ -134,7 +134,7 @@ view directories.
 
 A sensible order for processing everything is:
 
-  rake -f ztunes.rake drop rename prune views
+  ztunes drop rename prune views
 
 The :checktags target will crawl the media folders and complain about any files
 that have empty artist, album, track number, genre, or title tags.
@@ -142,7 +142,7 @@ that have empty artist, album, track number, genre, or title tags.
 Any target can be "pre-flighted" by specifying the :preview target at the start
 of the target list:
 
-  rake -f ztunes.rake preview rename
+  ztunes preview rename
 
 to see what it is going to do.
 
