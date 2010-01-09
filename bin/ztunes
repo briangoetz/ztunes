@@ -1,0 +1,12 @@
+#!/usr/bin/ruby
+
+if RUBY_PLATFORM =~ /mswin/
+   rake_cmd = "rake.bat"
+else
+   rake_cmd = "rake"
+end
+
+rakefile = "#{File.dirname(__FILE__)}/../lib/ztunes.rake"
+args = "-f #{rakefile} " + ARGV.join(' ')
+system("#{rake_cmd} " + args)
+$?

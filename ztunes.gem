@@ -7,8 +7,9 @@ SPEC = Gem::Specification.new do |s|
     s.email = "brian@briangoetz.com"
     s.platform = Gem::Platform::RUBY
     s.summary = "zTunes Digital Media Management System"
-    s.files = Dir.glob("{bin,lib,docs,test/**/*")
+    s.files = Dir.glob("{bin,lib,docs,test}/**/*")
     s.require_path = "lib"
+    s.executables << "ztunes"
     s.add_dependency("calibre-semaphore", ">= 1.0.0")
     s.add_dependency("flacinfo-rb", ">= 0.4")
     s.add_dependency("MP4Info", ">= 0.3.3")
