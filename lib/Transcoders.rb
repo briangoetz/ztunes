@@ -17,7 +17,9 @@ class TranscodeHandler < FileHandler
             tmpFile = exec.tempFile(inputFile)
             success = transform(exec, inputFile, tmpFile)
             if (success)
-                MediaFile.copyTagsFrom(inputFile, tmpFile, PathUtils.extension(outputFile))
+                MediaFile.copyTagsFrom(inputFile, tmpFile, PathUtils.extension(outputFile)) if !exec.dryRun
+                outputDir = outputFile.pathmap("%d")
+                EXEC.doFileCmd(:mkdir_p, outputDir) if !File.exist?(outputDir)
                 exec.doFileCmd(:mv, tmpFile, outputFile)
             else
                 exec.doFileCmd(:rm, tmpFile) if File.exist?(tmpFile)

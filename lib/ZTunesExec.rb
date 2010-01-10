@@ -56,9 +56,9 @@ class ZTunesExec
     def defer(&proc)
         begin
             @pendingThreads.synchronize do
-                t = Thread.new(self) do |exec|
+                @pendingThreads[0] += 1
+                Thread.new(self) do |exec|
                     begin
-                        Thread.stop
                         @semaphore.wait
                         proc.call(exec)
                     ensure
@@ -69,8 +69,6 @@ class ZTunesExec
                         end
                     end
                 end
-                @pendingThreads[0] += 1
-                t.run
             end
         end
     end

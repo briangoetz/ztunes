@@ -134,8 +134,6 @@ VIEW_FOLDERS.each do |viewDir, config|
             next if tracksDone[trackKey]
             tracksDone[trackKey] = true
             unless uptodate?(target, f)
-                outputDir = target.pathmap("%d")
-                EXEC.doFileCmd(:mkdir_p, outputDir) if !File.exist?(outputDir)
                 handler.handle(EXEC, f, target)
             end
         end
