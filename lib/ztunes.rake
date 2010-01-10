@@ -177,7 +177,10 @@ task :rename do
             relPath = PathUtils.relativePath(f, d)
             shouldBe = th.fileName
             if (relPath != shouldBe)
-                EXEC.doFileCmd(:mv, f, File.join(d, shouldBe))
+                dest = File.join(d, shouldBe)
+                outputDir = dest.pathmap("%d")
+                EXEC.doFileCmd(:mkdir_p, outputDir) if !File.exist?(outputDir)
+                EXEC.doFileCmd(:mv, f, dest)
             end
         end
     end

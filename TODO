@@ -5,3 +5,5 @@
  - Document how to write a drop handler, media tag handler
  - iTunes integration
  - Rails app for ingesting content 
+ - Deal with folder.jpg when renaming; either move or delete
+ 

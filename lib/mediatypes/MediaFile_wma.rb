@@ -9,8 +9,7 @@ class MediaFile_wma < MediaFile
     end
 
     MethodToTags = { 
-        :artist => "AlbumArtist", 
-        :album => "AlbumTitle", 
+        :album => "AlbumTitle",
         :title => "Title", 
         :genre => "Genre",
         :tracknumber => "TrackNumber"
@@ -20,6 +19,12 @@ class MediaFile_wma < MediaFile
         define_method(k) do
             tagFromHash(@info.tags, v)
         end
+    end
+
+    def artist
+        result = tagFromHash(@info.tags, "Author")
+        result = tagFromHash(@info.tags, "AlbumArtist") if !result
+        result
     end
 
     def tags
