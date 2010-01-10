@@ -1,7 +1,7 @@
+ - Video handlers: VOB, TiVo
  - Keep view directories in sync with source by deleting entries with no corresponding source
  - Allow file name format to be configured
  - Document external dependencies (including how to build flac)
  - Document how to write a drop handler, media tag handler
- - Handlers for TiVo files, VOB files
  - iTunes integration
  - Rails app for ingesting content 

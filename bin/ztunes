@@ -1,4 +1,20 @@
 #!/usr/bin/ruby
+require "rubygems"
+
+PREFIX = "#{File.dirname(__FILE__)}/../lib/"
+
+args = [ ]
+config = PREFIX + "config.rb"
+
+while true do
+    arg = ARGV.shift
+    break if !arg
+    if arg == "-c" || arg == "--config"
+        config = ARGV.shift
+    else
+        args << arg
+    end
+end
 
 if RUBY_PLATFORM =~ /mswin/
    rake_cmd = "rake.bat"
@@ -6,7 +22,7 @@ else
    rake_cmd = "rake"
 end
 
-rakefile = "#{File.dirname(__FILE__)}/../lib/ztunes.rake"
-args = "-f #{rakefile} " + ARGV.join(' ')
+rakefile = PREFIX + "ztunes.rake"
+args = "-f #{rakefile} CONFIG=#{config} " + args.join(' ')
 system("#{rake_cmd} " + args)
 $?
