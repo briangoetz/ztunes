@@ -4,6 +4,13 @@ we could play all the music in our library on all of our devices (iPods,
 Squeezebox, other MP3 players) without having to transcode everything down
 to the least-common-denominator.
 
+Configuring zTunes:
+
+Copy the configuration file config.rb from the GEM and put it somewhere.
+Edit it according to the descriptions below, and invoke zTunes with:
+
+    ztunes -c /path/to/config.rb target...
+
 There are three kinds of directories in a zTunes configuration:
  - Media folders -- these are the authoritative copies of your media,
 using their media tags to structure the subdirectories (e.g.,
@@ -146,11 +153,9 @@ of the target list:
 
 to see what it is going to do.
 
-
 Things to be added very soon:
  - Video transcoding support
 
 Things to be added eventually:
  - iTunes integration
  - Web app for content ingestion, library management
- 
