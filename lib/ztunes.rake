@@ -1,3 +1,4 @@
+require "rubygems"
 require "PathUtils"
 require "DropHandler"
 require "Transcoders"

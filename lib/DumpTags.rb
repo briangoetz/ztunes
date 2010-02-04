@@ -1,3 +1,4 @@
+require "rubygems"
 require "MediaFile"
 
 ARGV.each do |f|

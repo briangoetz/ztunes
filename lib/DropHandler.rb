@@ -5,11 +5,9 @@ require "PathUtils"
 class DropHandler < FileHandler
     def getOutputFile(file, inputBase)
         th = MediaFile.for(file)
-        return nil if !th
         wasExtn = PathUtils.extension(file)
         newExtn = outputType(file)
-
-        f = th.fileName()
+        f = (!th) ? file : th.fileName()
         f = PathUtils.replaceExtension(f, wasExtn, newExtn) if (wasExtn != newExtn)
         f
     end
@@ -44,7 +42,7 @@ class WavToFlacDropHandler < DropHandler
 
     def getOutputFile(file, inputBase)
         genre, artist, album, trackNo, title = file.pathmap("%n").split("#")
-        tags = { :artist => artist, :album => album, :title => title, 
+        tags = { :artist => artist, :album => album, :title => title,
                  :tracknumber => trackNo, :genre => genre }
         MediaFile.nameFromTags(tags, :audio, "flac")
     end
@@ -82,18 +80,30 @@ class WmaDropHandler < SimpleDropHandler
 end
 
 
-class TivoDropHandler < DropHandler
-    def initialize(opts = {})
-        super({ "TiVo" => "mp4" }, true)
-        @mediaKey = opts[:mak]
+class UntaggedVideoDropHandler < DropHandler
+    def initialize(typeMap, isTransform = false, opts = {})
+        super(typeMap, isTransform)
     end
 
     def getOutputFile(file, inputBase)
-        MediaFile.nameFromTags({ :title => file.pathmap("%n") }, :video, "mp4")
+        MediaFile.nameFromTags({ :title => file.pathmap("%n") }, :video, @type_map[PathUtils.extension(file)])
+    end
+end
+
+class TivoDropHandler < UntaggedVideoDropHandler
+    def initialize(opts = {})
+        super({ "TiVo" => "mp4" }, true)
+        @mediaKey = opts[:mak]
     end
 
     def transform(exec, inputFile, outputFile)
         cmd = "tivodecode -m #{@mediaKey} #{PathUtils.escape(inputFile)} > #{outputFile}"
         exec.doCmd(cmd)
     end
+end
+
+class VobDropHandler < UntaggedVideoDropHandler
+  def initialize(opts = {})
+      super({ "vob" => "vob" })
+  end
 end

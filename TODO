@@ -1,4 +1,5 @@
  - Video handlers: VOB, TiVo
+ - Deal with file names with leading dots
  - Keep view directories in sync with source by deleting entries with no corresponding source
  - Allow file name format to be configured
  - Document external dependencies (including how to build flac)
@@ -6,4 +7,5 @@
  - iTunes integration
  - Rails app for ingesting content 
  - Deal with folder.jpg when renaming; either move or delete
- 
+ - Log events to a log file
+ - Re-transcode files whose originals are newer than transcoded file (most likely cause -- changed tags)
