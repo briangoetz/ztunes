@@ -1,5 +1,6 @@
  - Video handlers: VOB, TiVo
  - Deal with file names with leading dots
+ - Keep running log file of actions -- ingest, transcode, rename, remove
  - Keep view directories in sync with source by deleting entries with no corresponding source
  - Allow file name format to be configured
  - Document external dependencies (including how to build flac)

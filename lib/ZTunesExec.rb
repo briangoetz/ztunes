@@ -1,11 +1,13 @@
 require "rubygems"
-require "calibre/semaphore"
+require "semaphore"
 require "rake"
 
 #
 # Encapsulate conditional execution, printing to console, and thread management
 #
 class ZTunesExec
+    include Rake::DSL
+
     attr_accessor :dryRun
 
     def initialize(maxThreads)

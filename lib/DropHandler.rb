@@ -63,7 +63,7 @@ end
 class SimpleDropHandler < DropHandler
     def initialize(extn, opts = {})
         typeMap = {}
-        extn.to_a.each { |e| typeMap[e] = e }
+        Array(extn).each { |e| typeMap[e] = e }
         super(typeMap)
     end
 end

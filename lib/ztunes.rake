@@ -33,8 +33,8 @@ ALL_FILES = File.join("**", "*")
 EXEC = ZTunesExec.new MAX_THREADS
 
 DROP_FOLDERS.each_value { |types| types.each_value { |config| @sourceFolders << config[:toDir] } }
-VIEW_FOLDERS.each_value { |config| @sourceFolders = @sourceFolders | config[:fromDirs].to_a }
-@sourceFolders = @sourceFolders | ADDITIONAL_SOURCES.to_a
+VIEW_FOLDERS.each_value { |config| @sourceFolders = @sourceFolders | Array(config[:fromDirs]) }
+@sourceFolders = @sourceFolders | Array(ADDITIONAL_SOURCES)
 @sourceFolders.uniq!
 
 #
@@ -84,21 +84,21 @@ VIEW_FOLDERS.each do |viewDir, config|
     @viewTargets[viewDir] = taskName
     task :views => [ taskName ]
     task taskName do
-        supportedTypes = config[:supportedTypes].to_a
+        supportedTypes = Array(config[:supportedTypes])
         transcodeTypes = config[:transcode] ? config[:transcode].keys : []
         targetsDone = {}
         tracksDone = {}
         sourceFiles = []
 
-        config[:fromDirs].to_a.each do |d|
+        Array(config[:fromDirs]).each do |d|
             FileList[File.join(d, ALL_FILES)].each do |f|
                 sourceFiles << [d, f]
             end
         end
 
-        def iter(sourceFiles, types)
+        def iter(files, types)
             if !types.empty?
-                sourceFiles.each do |p|
+                files.each do |p|
                     d, f = p
                     next if File.directory?(f)
                     extn = PathUtils.extension(f)
@@ -117,7 +117,7 @@ VIEW_FOLDERS.each do |viewDir, config|
             trackKey = PathUtils.relativePath(f, d).pathmap("%X")
             next if tracksDone[trackKey]
             tracksDone[trackKey] = true
-            unless uptodate?(target, f)
+            unless uptodate?(target, Array(f))
                 next if (File.exist?(target) && File.symlink?(target) && File.expand_path(File.readlink(target)) == File.expand_path(f))
                 outputDir = target.pathmap("%d")
                 EXEC.doFileCmd(:mkdir_p, outputDir) if !File.exist?(outputDir)
@@ -134,7 +134,7 @@ VIEW_FOLDERS.each do |viewDir, config|
             trackKey = PathUtils.relativePath(f, d).pathmap("%X")
             next if tracksDone[trackKey]
             tracksDone[trackKey] = true
-            unless uptodate?(target, f)
+            unless uptodate?(target, Array(f))
                 handler.handle(EXEC, f, target)
             end
         end
@@ -144,7 +144,7 @@ end
 
 # If a view points to another view, then create the appropriate dependency
 VIEW_FOLDERS.each do |viewDir, config|
-    config[:fromDirs].to_a.each do |d|
+    Array(config[:fromDirs]).each do |d|
         if (@viewTargets[d])
             task @viewTargets[viewDir] => [ @viewTargets[d] ]
         end
